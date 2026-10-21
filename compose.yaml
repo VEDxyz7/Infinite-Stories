@@ -1,0 +1,28 @@
+services:
+  database:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: infinite_stories
+      POSTGRES_USER: stories
+      POSTGRES_PASSWORD: ${IS_POSTGRES_PASSWORD:?Set a private database password}
+    volumes:
+      - progress:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stories -d infinite_stories"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  backend:
+    build: .
+    ports:
+      - "127.0.0.1:8042:8000"
+    environment:
+      IS_ENVIRONMENT: production
+      IS_DATABASE_URL: ${IS_DATABASE_URL:?Set the private PostgreSQL connection URL for the database service}
+      IS_ALLOWED_ORIGINS: ${IS_ALLOWED_ORIGINS:?Set exact HTTPS client origins}
+      IS_LLM_CALLS_ALLOWED: "false"
+    depends_on:
+      database:
+        condition: service_healthy
+volumes:
+  progress:

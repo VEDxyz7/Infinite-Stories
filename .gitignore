@@ -1,0 +1,51 @@
+# Secrets (the example is deliberately public).
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# API-derived evidence stays local until redistribution rights are established.
+tests/fixtures/local/
+reports/local/
+__pycache__/
+*.py[cod]
+.DS_Store
+# Backend environments, local databases and operational evidence.
+.venv/
+.ruff_cache/
+.pytest_cache/
+data/
+*.sqlite*
+*.db
+backend/.coverage
+coverage.xml
+# Unity generated artifacts (source Assets/ and ProjectSettings/ remain tracked).
+client/Library/
+client/Temp/
+client/Obj/
+client/Logs/
+client/UserSettings/
+client/Builds/
+client/MemoryCaptures/
+tools/qloo/node_modules/
+node_modules/
+
+# Private Unity test logs and local operational evidence.
+client/reports/local/
+
+## Local development records (preserve on disk; do not publish).
+/master_prompt.md
+/reports/
+/client/README.md
+/docs/AI_ACCEPTANCE.md
+/docs/ARCHITECTURE.md
+/docs/ASSET_RESEARCH.md
+/docs/BROWSER_ACCEPTANCE.md
+/docs/DEPLOYMENT.md
+/docs/LOCAL_AI_OPERATIONS.md
+/docs/PHASE_0_README_ARCHIVE.md
+/docs/PRD.md
+/docs/RUNBOOK.md
+/docs/TEST_STRATEGY.md
+/tests/fixtures/README.md
+/tools/qloo/README.md

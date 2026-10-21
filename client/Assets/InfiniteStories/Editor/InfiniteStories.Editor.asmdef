@@ -1,0 +1,5 @@
+{
+  "name": "InfiniteStories.Editor",
+  "references": ["InfiniteStories"],
+  "includePlatforms": ["Editor"]
+}

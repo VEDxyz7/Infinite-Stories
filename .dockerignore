@@ -1,0 +1,16 @@
+.git
+.venv
+.env
+.env.*
+!.env.example
+data
+client
+tests
+reports
+tools
+node_modules
+**/__pycache__
+
+# Internal working instructions are not container build inputs.
+master_prompt.md
+docs

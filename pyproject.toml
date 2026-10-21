@@ -1,0 +1,11 @@
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+include = ["backend/**/*.py", "scripts/verify_qloo_tooling.py", "scripts/check_release.py", "scripts/export_contracts.py", "scripts/service_smoke.py", "scripts/check_environment.py", "scripts/openai_connectivity.py", "scripts/verify_postgres.py"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

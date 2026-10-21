@@ -1,0 +1,11 @@
+{
+  "name": "infinite-stories-qloo-tooling",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@qloo/qloo-harness": "0.1.26"
+  },
+  "overrides": {
+    "@earendil-works/pi-coding-agent": "1.3.0"
+  }
+}

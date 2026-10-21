@@ -1,0 +1,474 @@
+{
+  "source_packs": {
+    "urban": "https://kenney.nl/assets/rpg-urban-pack",
+    "audio": "https://kenney.nl/assets/interface-sounds"
+  },
+  "licence": "CC0-1.0",
+  "files": [
+    {
+      "path": "Audio/click_001.ogg",
+      "sha256": "ccfb7fa0cccdd9faec0eb16033c732b1e308d139d80f799161495d58f7adcdb9",
+      "bytes": 4876
+    },
+    {
+      "path": "Audio/confirmation_001.ogg",
+      "sha256": "063564703b6094d70718a3e787a55cc9141611e4ecd6b6637f8828f79b4a8c3a",
+      "bytes": 8968
+    },
+    {
+      "path": "Audio/open_001.ogg",
+      "sha256": "a27c6bb0df7da1e6af5dd5937593c98bc58b6e513f42fe6a3254cd6a6949c648",
+      "bytes": 9834
+    },
+    {
+      "path": "Urban/tile_0023.png",
+      "sha256": "24a76093073e4464735483c7d7e648e2cfee20a7a7935846a8321f331a575ba1",
+      "bytes": 221
+    },
+    {
+      "path": "Urban/tile_0024.png",
+      "sha256": "06e6faba0c20722030ef21173c07066b11405e287787d542e451378039b7650b",
+      "bytes": 238
+    },
+    {
+      "path": "Urban/tile_0025.png",
+      "sha256": "baae7235287c8afd95530335fc13726888bb233e65cce8bd45cbf1d695b9743a",
+      "bytes": 223
+    },
+    {
+      "path": "Urban/tile_0026.png",
+      "sha256": "604101864af049b4f4be4638da33ee472f2fb876c00fc6f23754004a018468cc",
+      "bytes": 219
+    },
+    {
+      "path": "Urban/tile_0036.png",
+      "sha256": "dd5bfceacb5b8c6beea2a83d41c28933823654a6873e0b07143bd422e0d9fddc",
+      "bytes": 100
+    },
+    {
+      "path": "Urban/tile_0050.png",
+      "sha256": "34ce5cc6e30829bcc3af8cc504d5c71678c1cb477b8ce229ae6537c301065648",
+      "bytes": 233
+    },
+    {
+      "path": "Urban/tile_0051.png",
+      "sha256": "489e8329e606e666eb0399b09970a9116a015ceb6eb82b474bea9068027e593c",
+      "bytes": 239
+    },
+    {
+      "path": "Urban/tile_0052.png",
+      "sha256": "0cd5ee423e4ab33489a215a96f0fedad29125646ee9e57d3c0717b0d579f302e",
+      "bytes": 225
+    },
+    {
+      "path": "Urban/tile_0053.png",
+      "sha256": "f82b8046ef948e7d24c8ed1709c0a720724162a937d1bdc503ce69d7e643e935",
+      "bytes": 235
+    },
+    {
+      "path": "Urban/tile_0077.png",
+      "sha256": "ff33b5cf635b304d32814a5c8ae3bcc547b39959c7ae5830309eae9106139b74",
+      "bytes": 233
+    },
+    {
+      "path": "Urban/tile_0078.png",
+      "sha256": "04acda39122c8b36f407030f80c8beec12d20cee631196870b1964ebdb7c9630",
+      "bytes": 238
+    },
+    {
+      "path": "Urban/tile_0079.png",
+      "sha256": "6bd027587ee72d9faccf01bd03581359ca0c7bbc1058b379f528153896d1d00a",
+      "bytes": 223
+    },
+    {
+      "path": "Urban/tile_0080.png",
+      "sha256": "00200f7cf7b4ef1b441284f92b7878a823e01efd9be0280abe20644e2cecb056",
+      "bytes": 234
+    },
+    {
+      "path": "Urban/tile_0104.png",
+      "sha256": "b594c700ef094bf66c0ceabcf47b8cde09a2d55eb111533622c90b1f7eaeb278",
+      "bytes": 217
+    },
+    {
+      "path": "Urban/tile_0105.png",
+      "sha256": "f1e1a986592bd2180ed020eaf3fe8f22c6cb1603b492c49225e1782a1be9f428",
+      "bytes": 234
+    },
+    {
+      "path": "Urban/tile_0106.png",
+      "sha256": "f177f8eb1bb1f34a697ae00ca1ccaab0d6fab75f853dc368489f5e9ff0109675",
+      "bytes": 206
+    },
+    {
+      "path": "Urban/tile_0107.png",
+      "sha256": "298fb09391dfdec7a454282c813e905723331db2234bc33457f853a988e3b5ac",
+      "bytes": 214
+    },
+    {
+      "path": "Urban/tile_0109.png",
+      "sha256": "8949b0b56e185083889c5f068e8f3e23d6f4d28a5c471b117e43bfd551d6922c",
+      "bytes": 133
+    },
+    {
+      "path": "Urban/tile_0125.png",
+      "sha256": "05e36720fb7cdc1f4b720cbc25d6aaa458bbfc87e86368853f76b1bb63bce75b",
+      "bytes": 163
+    },
+    {
+      "path": "Urban/tile_0126.png",
+      "sha256": "9c03f46cb01f45b4df408aea27c9555fccbc10bd9bdc6504c03e2e37be2b0669",
+      "bytes": 152
+    },
+    {
+      "path": "Urban/tile_0131.png",
+      "sha256": "6ecfbd8f498cafa7fd45d1c9839fe68074bfecd2907a8277706a624bd959146a",
+      "bytes": 229
+    },
+    {
+      "path": "Urban/tile_0132.png",
+      "sha256": "1a908712963ee2a1d740f5f0f71110ba57bf4fdf9ebec2c1800ccf629913e68c",
+      "bytes": 237
+    },
+    {
+      "path": "Urban/tile_0133.png",
+      "sha256": "56a68365631dd7b5fcc1217d89f1a5b6c91097fc8c8bd751ba68eebe378deed0",
+      "bytes": 211
+    },
+    {
+      "path": "Urban/tile_0134.png",
+      "sha256": "97cab83a735e382410c07596eb76ffad7b062f831714315045b7f0c51f40e0ce",
+      "bytes": 230
+    },
+    {
+      "path": "Urban/tile_0153.png",
+      "sha256": "d4f61a5db878bba9eda955f8a118d7f1f3bd7289fe2b1d4b3694d58f00474b10",
+      "bytes": 153
+    },
+    {
+      "path": "Urban/tile_0158.png",
+      "sha256": "06464d1db323f3e37bb17bb01ac3fe34b725f869a5dbc98fefbbbab8b6b8baad",
+      "bytes": 230
+    },
+    {
+      "path": "Urban/tile_0159.png",
+      "sha256": "ee996a56c72edb7d31849cadd28ecb26b5630e7574718e130c6f212bbf3d7b39",
+      "bytes": 237
+    },
+    {
+      "path": "Urban/tile_0160.png",
+      "sha256": "8c291b9fcb460397f96411bb58243707b2f00b17c74b6acf1aa6865b2c6b0f8f",
+      "bytes": 211
+    },
+    {
+      "path": "Urban/tile_0161.png",
+      "sha256": "225e9cc6ba280c9f36cc8ed305b67afa86fda79d406b1451209ba8dd8ddc03bb",
+      "bytes": 227
+    },
+    {
+      "path": "Urban/tile_0165.png",
+      "sha256": "7fcf9fc2d358a9050b07c379b29427ce5d18b053ff1cba7b284a4ac86879a0b1",
+      "bytes": 148
+    },
+    {
+      "path": "Urban/tile_0171.png",
+      "sha256": "62586aa733b984c5cbc6e588a75e6e1af32f48ce38c7bc8017b6eb9c3b6d08a7",
+      "bytes": 189
+    },
+    {
+      "path": "Urban/tile_0185.png",
+      "sha256": "d67441505b9a7075b8a4875e656718b05f7cfcde352093ecb07192a721ad21b3",
+      "bytes": 234
+    },
+    {
+      "path": "Urban/tile_0186.png",
+      "sha256": "327b41c36b2627dc68e33692757f019782aa6657cc63dc2342daef80f4f60a1c",
+      "bytes": 241
+    },
+    {
+      "path": "Urban/tile_0187.png",
+      "sha256": "7b48a2ff2f25ebbe4e2e4e3efe4edabf3c5f192855c8c66615b51d2b0f9edc2f",
+      "bytes": 230
+    },
+    {
+      "path": "Urban/tile_0188.png",
+      "sha256": "9b82641ee025f0599d3be3fe0bdcd422486ab14b3c6b3b40d3e29e39c7766f70",
+      "bytes": 234
+    },
+    {
+      "path": "Urban/tile_0192.png",
+      "sha256": "bc326aff9f887ed795967a046357426f671e9398bb4bc9dc06c1a7f3542979c3",
+      "bytes": 155
+    },
+    {
+      "path": "Urban/tile_0212.png",
+      "sha256": "b6c5312e71159aec581abef2bdcdd1d27faa6acc8fe2ebb18731e2a646bd00e9",
+      "bytes": 246
+    },
+    {
+      "path": "Urban/tile_0213.png",
+      "sha256": "7973c85941aa50cc23dd40dca12deab30f3ede71a73713a290edc3cde7e747a2",
+      "bytes": 249
+    },
+    {
+      "path": "Urban/tile_0214.png",
+      "sha256": "6b0ab180ba0bdddc54b04f7d425a7be2178bf93aa347f3079916add6388a6e5e",
+      "bytes": 238
+    },
+    {
+      "path": "Urban/tile_0215.png",
+      "sha256": "f8da2c99f2125ff6dcfccf167eefa0d35f0010cf7b0b6b046559d17f861a8a28",
+      "bytes": 246
+    },
+    {
+      "path": "Urban/tile_0239.png",
+      "sha256": "5c72db4a7ea39050b906bae010c1c4df84777de770019d71dbcbb6a4322ac201",
+      "bytes": 248
+    },
+    {
+      "path": "Urban/tile_0240.png",
+      "sha256": "32f82949a982f231d7dfcc581e8286ec0a98a7edf72a9493a6fc75e94892dd8c",
+      "bytes": 247
+    },
+    {
+      "path": "Urban/tile_0241.png",
+      "sha256": "a7b14373a686399f723ca4d483f9b5277a44a09141e5ba4a414826c40da2aefc",
+      "bytes": 236
+    },
+    {
+      "path": "Urban/tile_0242.png",
+      "sha256": "8d16bb6040ec58bf1c28464a0fda795bf9f447a8d64ed7d9066dd71c0faf69fc",
+      "bytes": 245
+    },
+    {
+      "path": "Urban/tile_0266.png",
+      "sha256": "a7d67309e682947de992cd76d90edabd7898634a74e11149ca9a734c68a746e9",
+      "bytes": 245
+    },
+    {
+      "path": "Urban/tile_0267.png",
+      "sha256": "dced49663c00d3288458d46011d57bab0847cfb543620a99913c7b8873483748",
+      "bytes": 270
+    },
+    {
+      "path": "Urban/tile_0268.png",
+      "sha256": "ac74f5670ef20dbcc3655e0b14915c4dc1b15c8ad420a58757bc31f255b5d8ac",
+      "bytes": 258
+    },
+    {
+      "path": "Urban/tile_0269.png",
+      "sha256": "ac497d5bf391463035ae304f4e76f7f8c7cb7190fe2afa67a5d462b20366f1c2",
+      "bytes": 247
+    },
+    {
+      "path": "Urban/tile_0276.png",
+      "sha256": "cf5c9825314760fc9456884eb7a6faabe203bb0674265f8c6e7f8e1d43c8799d",
+      "bytes": 228
+    },
+    {
+      "path": "Urban/tile_0281.png",
+      "sha256": "a78f508a6025927f6341de8f669f65cd6accae85fd292f19cd814f990ab2f391",
+      "bytes": 185
+    },
+    {
+      "path": "Urban/tile_0284.png",
+      "sha256": "91677984a9c50184bfc87a95a3d7df85ee13877dceeab412e11a7f950a2670db",
+      "bytes": 169
+    },
+    {
+      "path": "Urban/tile_0293.png",
+      "sha256": "63591ea6feca0163c6ddfcaacec9092e4bb4e0fde0e93468318faa5b9db5aa9f",
+      "bytes": 253
+    },
+    {
+      "path": "Urban/tile_0294.png",
+      "sha256": "59bfde4ea0fadd87bcd9460278c87ab517ca45056f6e718b2130709d980d3f99",
+      "bytes": 268
+    },
+    {
+      "path": "Urban/tile_0295.png",
+      "sha256": "a6c8b8abf55b8e4ec40a90fa85c41846b07ddfc83e390f0ae7a7df37cf7ff06c",
+      "bytes": 268
+    },
+    {
+      "path": "Urban/tile_0296.png",
+      "sha256": "c0abd510ad334a92f0c9f0d7d2fe8da502c8816efde790830efecd4d28c30e83",
+      "bytes": 255
+    },
+    {
+      "path": "Urban/tile_0300.png",
+      "sha256": "c731eccf4011eaaac03152682adbb644dc05afb6af259df7b669643da7f3bf1b",
+      "bytes": 164
+    },
+    {
+      "path": "Urban/tile_0303.png",
+      "sha256": "3c9ca3a3491b0a9e9d979843a423456eed46f258652189360770040371cba89b",
+      "bytes": 165
+    },
+    {
+      "path": "Urban/tile_0304.png",
+      "sha256": "1463804aa8172461fc651aff0dbc131af68de169b60622870dc50ddf5691ec03",
+      "bytes": 238
+    },
+    {
+      "path": "Urban/tile_0309.png",
+      "sha256": "acbe78ec7f83b34f2a68be5a7bf06ed295f9f2aa501a0a3d4247ce6f39b9100e",
+      "bytes": 189
+    },
+    {
+      "path": "Urban/tile_0310.png",
+      "sha256": "d162eb4d959b807eec4fe8ac401ab053e7c3e408e3a98f74a0488e95b9223436",
+      "bytes": 180
+    },
+    {
+      "path": "Urban/tile_0320.png",
+      "sha256": "358c81185bfb840117d556ed450c46c78b66b24fdede50f6d7ec12992b29e2bc",
+      "bytes": 254
+    },
+    {
+      "path": "Urban/tile_0321.png",
+      "sha256": "053b325eb45ff86930e112e00d0365b3aab9ff3d31dc0e841667e1686ff0a840",
+      "bytes": 267
+    },
+    {
+      "path": "Urban/tile_0322.png",
+      "sha256": "9d039669dbecdc170fb0a0aa34093fd385145d79d13c2a87d559583bc871ac64",
+      "bytes": 264
+    },
+    {
+      "path": "Urban/tile_0323.png",
+      "sha256": "adad097763b27f42ceebbe1d0547a65a80fe7e5db0ee67d232ba14b28e9590bd",
+      "bytes": 252
+    },
+    {
+      "path": "Urban/tile_0337.png",
+      "sha256": "056ed8208be41e499ac501d48ccf484258135c4c32c42f51a934b67351eb85e5",
+      "bytes": 185
+    },
+    {
+      "path": "Urban/tile_0355.png",
+      "sha256": "12bcc1f2a47cdbfaffd03e2123867db9caa28469befcebb30a9b6e85b0e5b5ab",
+      "bytes": 172
+    },
+    {
+      "path": "Urban/tile_0356.png",
+      "sha256": "ad636f80cdb4a8fe4eaca95938f44a74651a61712065531334a9c2206a24f44b",
+      "bytes": 190
+    },
+    {
+      "path": "Urban/tile_0357.png",
+      "sha256": "4a0fbf2b389ae3c7b77431e4efe44e5cfab4eeb892a8b62f7194acf576a0fc23",
+      "bytes": 177
+    },
+    {
+      "path": "Urban/tile_0358.png",
+      "sha256": "5d8a727bbbd0298eac832fce6d08ccc259f5cc264169b587304b542c7d8c3a9c",
+      "bytes": 184
+    },
+    {
+      "path": "Urban/tile_0382.png",
+      "sha256": "11325582bf3959c8d92d585fc46c0856007a2533511897160d90fe9ce6b307fd",
+      "bytes": 189
+    },
+    {
+      "path": "Urban/tile_0383.png",
+      "sha256": "08e21483912a6377b5730301ccaba71eaef80e5cc28d4f0ae95d16db5042def6",
+      "bytes": 186
+    },
+    {
+      "path": "Urban/tile_0406.png",
+      "sha256": "5691d44962bc6eea4a6f14fcae0297271d4cd588281a4959243b6f648b3e61c3",
+      "bytes": 156
+    },
+    {
+      "path": "Urban/tile_0410.png",
+      "sha256": "4efa92e940f37ee36a5d0f10bf1c7a282be1319849f9f6b1600082ff93bfefcf",
+      "bytes": 190
+    },
+    {
+      "path": "Urban/tile_0417.png",
+      "sha256": "d5adfbbce775a87ab2c02bdec71b2c0fe3f17651a9097dbb157de4cda23cef84",
+      "bytes": 172
+    },
+    {
+      "path": "Urban/tile_0428.png",
+      "sha256": "204a7422bcca33d62066819f788739277e168bf3aac8d79a8e24ec38379d2592",
+      "bytes": 230
+    },
+    {
+      "path": "Urban/tile_0429.png",
+      "sha256": "a074481f5e4e49de9f0ade64bf5824e3e2f857f6926da3cdd1f2b2b2d5565af8",
+      "bytes": 239
+    },
+    {
+      "path": "Urban/tile_0430.png",
+      "sha256": "f90b6629394425d45c2fc53bb04776fea3d50d86d3a223ba1f66ee337436d261",
+      "bytes": 216
+    },
+    {
+      "path": "Urban/tile_0431.png",
+      "sha256": "68c8d320089db254c3d5ea031fec5e9456075edc0d0d852603b6d71aaea23ac9",
+      "bytes": 230
+    },
+    {
+      "path": "Urban/tile_0433.png",
+      "sha256": "daee40870c39c4ffc00dda28cb6505d958570b254174bb8e2d52ee19e32b4b25",
+      "bytes": 147
+    },
+    {
+      "path": "Urban/tile_0435.png",
+      "sha256": "f5e204ac41aade8cdce29cd27c4a897876790f32686df2cbef555ae147a16b97",
+      "bytes": 149
+    },
+    {
+      "path": "Urban/tile_0455.png",
+      "sha256": "166b0f551bd0a65d7ee2cb5bd907fcc62564a62f738755f878e949033f6de558",
+      "bytes": 251
+    },
+    {
+      "path": "Urban/tile_0456.png",
+      "sha256": "6132b092c0979a7d9c9adb07ced47c862739f58c260b647f3f59cc2be86cd7be",
+      "bytes": 248
+    },
+    {
+      "path": "Urban/tile_0457.png",
+      "sha256": "7464f988fe8b8e44ed9ed221e2a9c6be9e7b2715ebef00bcf118d8f7c3af694e",
+      "bytes": 227
+    },
+    {
+      "path": "Urban/tile_0458.png",
+      "sha256": "04e0ed95687c266a116657fee8fa1d5e5009baf3b9ad8aeabbe71af177651558",
+      "bytes": 252
+    },
+    {
+      "path": "Urban/tile_0460.png",
+      "sha256": "28aca1509e914458a370b8116409da109b51658b59ee64f949aae6689dd726d9",
+      "bytes": 152
+    },
+    {
+      "path": "Urban/tile_0468.png",
+      "sha256": "6fbedceb13d242a1e951fdf174de0de56b1f2f5059d68fc80bd6cc17dcef2476",
+      "bytes": 140
+    },
+    {
+      "path": "Urban/tile_0482.png",
+      "sha256": "4bdd7bb1b56ef93f88cc54ad13673d37674885eee431008d384a7b19c8849a1a",
+      "bytes": 249
+    },
+    {
+      "path": "Urban/tile_0483.png",
+      "sha256": "ca95a7975659da281204836c94dc38cce049610b63ffdceea8213301ea7a3460",
+      "bytes": 247
+    },
+    {
+      "path": "Urban/tile_0484.png",
+      "sha256": "88d7b424a84e39fa9b1bb8d48f3a6723dd310fcde0e33457a7b72d2e50212e8e",
+      "bytes": 226
+    },
+    {
+      "path": "Urban/tile_0485.png",
+      "sha256": "cac28caf3cc5d6aef46b340b70f018870037f234f52fbb3d317c3bf067ba76a0",
+      "bytes": 251
+    }
+  ]
+}

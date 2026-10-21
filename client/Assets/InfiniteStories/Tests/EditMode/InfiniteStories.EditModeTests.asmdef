@@ -1,0 +1,6 @@
+{
+  "name": "InfiniteStories.EditModeTests",
+  "references": ["InfiniteStories"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

@@ -1,0 +1,387 @@
+{
+  "$defs": {
+    "CulturalContext": {
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "const": 1,
+          "default": 1,
+          "title": "Schema Version",
+          "type": "integer"
+        },
+        "source": {
+          "const": "qloo",
+          "default": "qloo",
+          "title": "Source",
+          "type": "string"
+        },
+        "rule_version": {
+          "const": "cultural-cards-v1",
+          "default": "cultural-cards-v1",
+          "title": "Rule Version",
+          "type": "string"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/CulturalLink"
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "title": "Links",
+          "type": "array"
+        }
+      },
+      "required": [
+        "links"
+      ],
+      "title": "CulturalContext",
+      "type": "object"
+    },
+    "CulturalEntity": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "format": "uuid",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "artist",
+            "movie",
+            "brand",
+            "videogame"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "description": {
+          "default": "",
+          "maxLength": 1200,
+          "title": "Description",
+          "type": "string"
+        },
+        "disambiguation": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Disambiguation",
+          "type": "string"
+        },
+        "year": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Year"
+        },
+        "content_rating": {
+          "default": "",
+          "maxLength": 40,
+          "title": "Content Rating",
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "$ref": "#/$defs/CulturalTag"
+          },
+          "maxItems": 40,
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "required": [
+        "entity_id",
+        "name",
+        "category"
+      ],
+      "title": "CulturalEntity",
+      "type": "object"
+    },
+    "CulturalLink": {
+      "additionalProperties": false,
+      "properties": {
+        "seed": {
+          "$ref": "#/$defs/CulturalEntity"
+        },
+        "recommendations": {
+          "items": {
+            "$ref": "#/$defs/CulturalEntity"
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "title": "Recommendations",
+          "type": "array"
+        },
+        "selected_id": {
+          "format": "uuid",
+          "title": "Selected Id",
+          "type": "string"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/CulturalRequest"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "title": "Evidence",
+          "type": "array"
+        },
+        "setting": {
+          "maxLength": 80,
+          "title": "Setting",
+          "type": "string"
+        },
+        "supporting_tag_id": {
+          "default": "",
+          "maxLength": 200,
+          "title": "Supporting Tag Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seed",
+        "recommendations",
+        "selected_id",
+        "evidence",
+        "setting"
+      ],
+      "title": "CulturalLink",
+      "type": "object"
+    },
+    "CulturalRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "origin": {
+          "const": "https://hackathon.api.qloo.com",
+          "default": "https://hackathon.api.qloo.com",
+          "title": "Origin",
+          "type": "string"
+        },
+        "path": {
+          "enum": [
+            "/search",
+            "/v2/insights"
+          ],
+          "title": "Path",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Params",
+          "type": "object"
+        },
+        "retrieved_at": {
+          "title": "Retrieved At",
+          "type": "string"
+        },
+        "body_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Body Sha256",
+          "type": "string"
+        },
+        "elapsed_ms": {
+          "minimum": 0,
+          "title": "Elapsed Ms",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "params",
+        "retrieved_at",
+        "body_sha256",
+        "elapsed_ms"
+      ],
+      "title": "CulturalRequest",
+      "type": "object"
+    },
+    "CulturalTag": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 200,
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "maxLength": 200,
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type"
+      ],
+      "title": "CulturalTag",
+      "type": "object"
+    },
+    "SavedInterest": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "artist",
+            "movie",
+            "brand",
+            "book",
+            "videogame"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "entity_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Entity Id"
+        }
+      },
+      "required": [
+        "name",
+        "category"
+      ],
+      "title": "SavedInterest",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "chapter_id": {
+      "const": "last_light",
+      "default": "last_light",
+      "title": "Chapter Id",
+      "type": "string"
+    },
+    "chapter_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Chapter Version",
+      "type": "integer"
+    },
+    "mode": {
+      "default": "authored",
+      "enum": [
+        "authored",
+        "cultural"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "location_id": {
+      "default": "quay",
+      "title": "Location Id",
+      "type": "string"
+    },
+    "x": {
+      "default": 4,
+      "title": "X",
+      "type": "number"
+    },
+    "y": {
+      "default": 5,
+      "title": "Y",
+      "type": "number"
+    },
+    "visits": {
+      "default": 1,
+      "maximum": 12,
+      "minimum": 1,
+      "title": "Visits",
+      "type": "integer"
+    },
+    "flags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Flags",
+      "type": "array"
+    },
+    "choices": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Choices",
+      "type": "array"
+    },
+    "interests": {
+      "items": {
+        "$ref": "#/$defs/SavedInterest"
+      },
+      "title": "Interests",
+      "type": "array"
+    },
+    "ending": {
+      "default": "",
+      "title": "Ending",
+      "type": "string"
+    },
+    "history": {
+      "items": {
+        "type": "string"
+      },
+      "title": "History",
+      "type": "array"
+    },
+    "cultural_source": {
+      "default": "none",
+      "enum": [
+        "none",
+        "qloo"
+      ],
+      "title": "Cultural Source",
+      "type": "string"
+    },
+    "cultural_context": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CulturalContext"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "title": "GameState",
+  "type": "object"
+}

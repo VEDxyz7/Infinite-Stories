@@ -1,0 +1,5 @@
+{
+  "name": "InfiniteStories",
+  "references": ["Unity.ugui"],
+  "autoReferenced": true
+}
