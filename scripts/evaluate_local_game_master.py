@@ -370,6 +370,27 @@ def persistent_journey(model, cultural=False):
                 ("I light the beacon and leave together with my friends.", "beacon"),
             ):
                 saved = visit_next(client, headers, saved)
+                if cultural and flag in ("rhythm", "beacon"):
+                    target = "screening_note_0" if flag == "rhythm" else "beacon"
+                    saved = move(client, headers, saved, 12 if flag == "rhythm" else 14, 6 if flag == "rhythm" else 9)
+                    obj = next(o for o in saved["nearby"] if o["id"] == target)
+                    option = next(
+                        c for c in obj["choices"] if c["id"].startswith("trace_" if flag == "rhythm" else "prove_")
+                    )
+                    evidence_reply = client.post(
+                        url + "/turns",
+                        headers=headers,
+                        json={
+                            "request_id": str(uuid4()),
+                            "expected_revision": saved["revision"],
+                            "text": option["label"],
+                        },
+                    )
+                    assert evidence_reply.status_code == 200, evidence_reply.text
+                    saved = evidence_reply.json()
+                    assert ("trace_0" if flag == "rhythm" else "proof_0") in saved["state"]["flags"], (
+                        "EVIDENCE_ACTION_NOT_APPLIED"
+                    )
                 if cultural and flag == "chronicle":
                     saved = move(client, headers, saved, 12, 6)
                     card = next(o for o in saved["nearby"] if o["id"] == "cultural_echo_0")
@@ -390,7 +411,7 @@ def persistent_journey(model, cultural=False):
                 assert flag in saved["state"]["flags"], "QUEST_FLAG_NOT_APPLIED_" + flag
             assert saved["state"]["ending"] == "together"
             assert saved["state"]["visits"] == 4
-            assert len(calls) == (5 if cultural else 4) + dialogue_calls
+            assert len(calls) == (7 if cultural else 4) + dialogue_calls
         # A fresh application with model calls disabled must restore the same save.
         with TestClient(create_app(Settings(database_url=cfg.database_url, environment="test"))) as client:
             resumed = client.get(url, headers=headers).json()
@@ -408,6 +429,7 @@ def persistent_journey(model, cultural=False):
                 "authoritative engine granted map",
                 "duplicate receipt replayed without inference",
                 "fresh app resumed identical confirmed state",
+                *(["actual local model recorded cinema trace and Curator proof for v2"] if cultural else []),
             ],
         }
 
@@ -420,7 +442,7 @@ def main():
     args = parser.parse_args()
     if not args.execute:
         print(
-            "Plan only: 32 real local model cases plus eleven persistent backend turns across authored and cultural journeys; zero hosted calls."
+            "Plan only: 32 real local model cases plus thirteen persistent backend turns across authored and cultural journeys; zero hosted calls."
         )
         return
     if args.output.exists():

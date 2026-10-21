@@ -12,7 +12,7 @@ namespace InfiniteStories
         [Serializable] sealed class View
         {
             public bool title, blocked, busy, pending, cultural_available;
-            public string location, story, ending, panel, panel_text;
+            public string location, story, ending, panel, panel_text, diagnostic_evidence;
             public float x, y;
             public int revision, visits;
             public string[] objectives;
@@ -23,7 +23,7 @@ namespace InfiniteStories
         [DllImport("__Internal")] static extern void IS_AccessibleStatus(string message);
 #endif
         static string previous;
-        public static void Publish(GameView game, bool title, bool blocked, bool busy, bool pending, bool culturalAvailable=false, EntityCandidate[] candidates=null,string panel="",string panelText="")
+        public static void Publish(GameView game, bool title, bool blocked, bool busy, bool pending, bool culturalAvailable=false, EntityCandidate[] candidates=null,string panel="",string panelText="",string storyText="",string diagnosticEvidence="")
         {
             var actions=new List<ActionView>(); var objectives=new List<string>();
             if (title && candidates!=null) for (int i=0;i<candidates.Length;i++)
@@ -38,8 +38,8 @@ namespace InfiniteStories
                         actions.Add(new ActionView { label=obj.name+": "+choice.label, command="choose:"+obj.id+":"+choice.id });
                 }
             }
-            string json=JsonUtility.ToJson(new View { panel_text=panelText,panel=panel,title=title,cultural_available=culturalAvailable,blocked=blocked,busy=busy,pending=pending,location=game?.location.name ?? "The Last Light",
-                story=game?.narrative ?? "Choose the original authored chapter or resume your journey.",ending=game?.state.ending ?? "",
+            string json=JsonUtility.ToJson(new View { diagnostic_evidence=diagnosticEvidence,panel_text=panelText,panel=panel,title=title,cultural_available=culturalAvailable,blocked=blocked,busy=busy,pending=pending,location=game?.location.name ?? "The Last Light",
+                story=!string.IsNullOrEmpty(storyText)?storyText:game?.narrative ?? "Choose the original authored chapter or resume your journey.",ending=game?.state.ending ?? "",
                 x=game?.state.x ?? 0,y=game?.state.y ?? 0,revision=game?.revision ?? 0,visits=game?.state.visits ?? 0,
                 objectives=objectives.ToArray(),actions=actions.ToArray() });
             if (json==previous) return; previous=json;

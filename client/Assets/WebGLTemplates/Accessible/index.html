@@ -4,39 +4,36 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Infinite Stories · The Last Light</title>
 <style>
-  *{box-sizing:border-box}body{margin:0;background:#09121c;color:#dae7ec;font:16px system-ui,sans-serif}
-  main{max-width:1440px;margin:auto;padding:20px}h1{color:#efb85e;font-size:24px;margin:0 0 8px}
-  #layout{display:grid;grid-template-columns:minmax(0,1fr) 310px;gap:18px}canvas{width:100%;aspect-ratio:16/10;background:#121b26}
-  aside{background:#101f2d;padding:16px;border-radius:12px}button{background:#214556;color:#f2f6f8;border:1px solid #527184;border-radius:6px;padding:10px;margin:3px;cursor:pointer;font:inherit}
-  button:focus-visible{outline:3px solid #efb85e}button:disabled{opacity:.4;cursor:wait}#actions button{display:block;width:100%;text-align:left}
-  #status{min-height:3em}#directions{display:grid;grid-template-columns:1fr 1fr}small{display:block;color:#a5bdc8;margin-bottom:12px}
-  @media(max-width:900px){#layout{grid-template-columns:1fr}canvas{min-height:320px}}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#080f18;color:#d9e3df;font:16px system-ui,sans-serif}main{height:100%;display:grid;place-items:center}#layout{width:100vw;height:100vh;position:relative}.stage{width:100%;height:100%}canvas{display:block;width:100%;height:100%;background:#080f18;outline:none}header,main>small{display:none}#status{display:none}#access-toggle{position:fixed;top:45%;left:0;z-index:10;writing-mode:vertical-rl;font-size:11px;padding:5px 9px;background:#0c1722;border:1px solid #34414a;color:#adbfbe;cursor:pointer}aside{display:none;position:absolute;right:12px;top:12%;bottom:10%;width:min(380px,92vw);overflow:auto;background:#0c1722;border:1px solid #49544e;padding:20px;z-index:12;box-shadow:0 8px 40px #0009}.controls-open aside{display:block}button{font:inherit;background:#1c3038;color:#e1e7df;border:1px solid #425550;padding:9px 12px;cursor:pointer;margin:3px}button:disabled{opacity:.4;cursor:not-allowed}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #d4ad69;outline-offset:2px}input,select,textarea{font:inherit;color:#e1e7df;background:#111e29;border:1px solid #425550;padding:9px;max-width:100%;width:100%}#directions{display:grid;grid-template-columns:1fr 1fr}#culture-form label{display:block;margin:10px 0}#actions button{display:block;width:100%;text-align:left}#agent-text{width:100%}#notebook-text{font:14px/1.6 system-ui,sans-serif}#diagnostics{display:none;position:fixed;left:12px;bottom:12px;max-width:560px;max-height:35vh;overflow:auto;padding:16px;background:#07111afa;border:1px solid #4d5b62;z-index:15;font:12px monospace}body.diagnostics #diagnostics{display:block}#load-state{position:fixed;inset:0;background:#080f18;display:grid;place-items:center;z-index:20;color:#d4ad69;letter-spacing:.12em;font-size:18px}[hidden]{display:none!important}
 </style>
-<main>
-  <h1>Infinite Stories · The Last Light</h1>
+<div id="load-state" role="status">ENTERING THE LAST LIGHT…</div><button id="access-toggle" aria-expanded="false" aria-controls="accessible-controls">Accessible controls</button><section id="diagnostics"><strong>DEVELOPER DIAGNOSTICS</strong><p id="diagnostic-status"></p><pre id="diagnostic-view"></pre></section><main>
+  <header><h1>Infinite Stories · The Last Light</h1></header>
   <small>Four cultural paths: artists → films, films → artists, brands → films, video games → films. Free-form actions depend on service availability.</small>
   <p id="status" role="status" aria-live="polite">Loading the Unity game…</p>
   <div id="layout">
-    <section aria-label="Unity game">
-      <canvas id="unity-canvas" width="960" height="600" tabindex="0" aria-label="The Last Light game world; use WASD or the accessible controls"></canvas>
-      <div id="journey" aria-label="Journey controls"></div>
+    <section class="stage" aria-label="Unity game">
+      <canvas id="unity-canvas" width="1600" height="900" tabindex="0" aria-label="The Last Light game world; use WASD or the accessible controls"></canvas>
+    </section>
+    <aside id="accessible-controls" aria-label="Accessible game controls"><h2>Alternative controls</h2><p>Optional keyboard-accessible controls. Close with the Accessible controls button.</p>      <div id="journey" aria-label="Journey controls"></div>
       <form id="culture-form" aria-label="Cultural interests">
         <label>Public cultural interest <input id="culture-seed" maxlength="120" placeholder="An artist, film, brand or video game" required></label>
         <label>Category <select id="culture-category"><option value="artist">Artist → films</option><option value="movie">Film → artists</option><option value="brand">Brand → films</option><option value="videogame">Video game → films</option></select></label>
         <button id="add-interest" type="submit">Add cultural interest</button>
       </form>
-    </section>
-    <aside aria-label="Accessible game controls">
+
       <h2 id="location">The Last Light</h2><p id="position"></p>
       <div id="directions" aria-label="Movement controls"></div>
       <div id="interaction"></div><details id="notebook" hidden><summary>Open panel text (accessible)</summary><pre id="notebook-text" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre></details>
-      <p id="story"></p><ul id="objectives"></ul><div id="actions" aria-label="Nearby choices"></div>
+      <form id="agent-form"><label for="agent-text">Your free-form action</label><textarea id="agent-text" maxlength="1000" rows="3" placeholder="Ask a question, explore, or propose an action"></textarea><button id="agent-send">Ask Game Master</button></form><p id="story"></p><ul id="objectives"></ul><div id="actions" aria-label="Nearby choices"></div>
     </aside>
   </div>
 </main>
 <script>
   'use strict';
   let player=null, lastActions='', current=null;
+  const diagnostics=new URLSearchParams(location.search).get('diagnostics')==='1';document.body.classList.toggle('diagnostics',diagnostics);
+  document.getElementById('access-toggle').addEventListener('click',()=>{const open=document.getElementById('layout').classList.toggle('controls-open');document.getElementById('access-toggle').setAttribute('aria-expanded',String(open));});
+  document.getElementById('agent-form').addEventListener('submit',event=>{event.preventDefault();if(player&&current&&!current.busy&&!current.pending&&(!current.blocked||current.panel==='dialogue')&&!current.title&&!current.ending){const text=document.getElementById('agent-text').value.trim();if(text)player.SendMessage('Infinite Stories','OnBrowserTurn',text);}});
   function button(parent,label,command){
     const node=document.createElement('button');node.type='button';node.textContent=label;node.disabled=true;node.dataset.command=command;
     node.addEventListener('click',()=>{if(player)player.SendMessage('Infinite Stories','OnBrowserCommand',command)});
@@ -52,12 +49,14 @@
   });
   for(const [label,command] of [['Step north' ,'north'],['Step south','south'],['Step west','west'],['Step east','east'],['Stop walking','stop']])button('directions',label,command);
   for(const [label,command] of [['Talk / inspect','interact'],['Pause journey','pause'],['Return to street','continue']])button('interaction',label,command);
-  window.infiniteStoriesStatus=message=>{document.getElementById('status').textContent=message};
+  window.infiniteStoriesStatus=message=>{document.getElementById('status').textContent=message;document.getElementById('diagnostic-status').textContent=message};
   function render(){
-    if(!current)return;const v=current;
+    if(!current)return;const v=current;document.getElementById('diagnostic-view').textContent=JSON.stringify({location:v.location,x:v.x,y:v.y,revision:v.revision,busy:v.busy,pending:v.pending,evidence:v.diagnostic_evidence},null,2);
     document.getElementById('location').textContent=v.location+(v.ending?' · Chapter complete':'');
-    document.getElementById('position').textContent=(v.title?'Choose a journey':`Position ${v.x.toFixed(1)}, ${v.y.toFixed(1)} · Visit ${v.visits}/12 · Save ${v.revision}`)+(v.busy?' · Saving…':v.pending?' · Request needs confirmation':'');
+    document.getElementById('position').textContent=(v.title?'Choose a journey':`Visit ${v.visits}/12 · ${Math.max(0,12-v.visits)} visits remain`)+(v.busy?' · Saving…':v.pending?' · Request needs confirmation':'');
     document.getElementById('story').textContent=v.story;
+    const cannotAsk=v.title||(v.blocked&&v.panel!=='dialogue')||v.busy||v.pending||!!v.ending;document.getElementById('agent-send').disabled=!player||cannotAsk;document.getElementById('agent-text').disabled=cannotAsk;
+    if(matchMedia('(max-width:900px)').matches)document.getElementById('notebook').open=!!v.panel_text;
     document.getElementById('notebook').hidden=!v.panel_text;document.getElementById('notebook-text').textContent=v.panel_text||'';
     document.getElementById('culture-form').hidden=!v.title; document.getElementById('add-interest').disabled=!player||v.busy||v.pending;
     const goals=document.getElementById('objectives');goals.replaceChildren();
@@ -74,21 +73,25 @@
       else if(c==='title'||c==='stop')allowed=!v.title;
       else if(c==='continue')allowed=!v.title&&v.blocked&&!v.ending;
       else if(c==='compare')allowed=!v.title&&v.panel==='scanner';
-      else if(c==='scanner'||c==='journal')allowed=!v.title&&!v.ending;
+      else if(c==='scanner'||c==='journal'||c==='story')allowed=!v.title;
+      else if(c==='sound')allowed=!v.title;
       else if(c==='pause')allowed=!v.title&&!v.blocked&&!v.ending;
       else allowed=!v.title&&!v.blocked&&!v.ending;
+      if(['cultural','authored','resume'].includes(c))b.hidden=!v.title&&!v.pending;
+      if(c==='title')b.hidden=v.title;
       b.disabled=!player||!allowed||(v.busy&&c!=='stop')||(v.pending&&c!=='retry'&&c!=='resume'&&c!=='stop');
     }
   }
-  for(const [label,command] of [['Scanner','scanner'],['Journal','journal'],['Qloo on/off comparison','compare']])button('interaction',label,command);
+  for(const [label,command] of [['Scanner','scanner'],['Journal','journal'],['Story','story'],['Sound on/off','sound'],['Qloo on/off comparison','compare']])button('interaction',label,command);
+  window.addEventListener('resize',render);
   window.infiniteStoriesView=json=>{try{current=JSON.parse(json);render()}catch{window.infiniteStoriesStatus('The accessible game display could not be updated.')}};
   const config={dataUrl:'Build/{{{ DATA_FILENAME }}}',frameworkUrl:'Build/{{{ FRAMEWORK_FILENAME }}}',codeUrl:'Build/{{{ CODE_FILENAME }}}',streamingAssetsUrl:'StreamingAssets',
     companyName:'Infinite Stories',productName:'The Last Light',productVersion:'1.0',autoSyncPersistentDataPath:true,
     showBanner:message=>window.infiniteStoriesStatus(message)};
   const loader=document.createElement('script');loader.src='Build/{{{ LOADER_FILENAME }}}';
   loader.onload=()=>createUnityInstance(document.getElementById('unity-canvas'),config,p=>window.infiniteStoriesStatus(`Loading Unity: ${Math.round(p*100)}%`))
-    .then(instance=>{player=instance;window.infiniteStoriesStatus('Ready. Choose your journey.');render()})
-    .catch(()=>window.infiniteStoriesStatus('The Unity game could not load. Reload to retry.'));
-  loader.onerror=()=>window.infiniteStoriesStatus('The Unity game download failed. Reload to retry.');document.body.appendChild(loader);
+    .then(instance=>{player=instance;document.getElementById('load-state').hidden=true;window.infiniteStoriesStatus('Ready. Choose your journey.');render()})
+    .catch(()=>{document.getElementById('load-state').textContent='The city could not load. Reload to retry.';window.infiniteStoriesStatus('The Unity game could not load. Reload to retry.')});
+  loader.onerror=()=>{document.getElementById('load-state').textContent='The city download failed. Reload to retry.';window.infiniteStoriesStatus('The Unity game download failed. Reload to retry.')};document.body.appendChild(loader);
 </script>
 </html>

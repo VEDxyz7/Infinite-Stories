@@ -12,7 +12,7 @@ namespace InfiniteStories
         TileWorld world;
         GameUI ui;
         GameView view;
-        bool busy;
+        bool busy, thinking, turnQueued;
         float nextSave;
         const string PendingKey = "is.pendingRequest", SessionKey = "is.sessionId";
         public bool HasPending => PlayerPrefs.HasKey(PendingKey);
@@ -22,11 +22,16 @@ namespace InfiniteStories
             api=gameObject.AddComponent<ApiTransport>(); world=gameObject.AddComponent<TileWorld>(); ui=gameObject.AddComponent<GameUI>(); ui.Initialize();
             if (settings == null) settings=Resources.Load<ClientSettings>("ClientSettings");
             if (settings == null) settings=ScriptableObject.CreateInstance<ClientSettings>();
-            try { settings.Validate(!Debug.isDebugBuild); api.Origin=settings.apiOrigin; world.AvatarPrefab=settings.playerPrefab; }
+            bool release=!Debug.isDebugBuild;
+#if INFINITE_STORIES_LOCAL_PREVIEW
+            if(Uri.TryCreate(Application.absoluteURL,UriKind.Absolute,out var previewOrigin)&&previewOrigin.IsLoopback)release=false;
+#endif
+            try { settings.Validate(release); api.Origin=settings.apiOrigin; world.AvatarPrefab=settings.playerPrefab; }
             catch (ArgumentException error) { ui.Status(error.Message); enabled=false; return; }
+            ui.RecordDiscovery=command=>{if(!busy&&!HasPending)StartCoroutine(Act(command));};
             ui.Resume=Resume; ui.Reload=Resume; ui.Retry=Retry;
             ui.StartAuthored=() => NewGame("authored"); ui.StartCultural=() => NewGame("cultural");
-            ui.SubmitTurn=() => { if (view != null && !busy && !HasPending && !string.IsNullOrWhiteSpace(ui.ActionText)) StartCoroutine(SaveThenTurn(ui.ActionText)); };
+            ui.SubmitTurn=() => OnBrowserTurn(ui.ActionText);
             ui.ReturnTitle=() => { if (!busy) StartCoroutine(SaveAndTitle()); };
             ui.ShowTitle(PlayerPrefs.HasKey(SessionKey));
             StartCoroutine(LoadCapabilities());
@@ -34,10 +39,12 @@ namespace InfiniteStories
         }
         void Update()
         {
-            BrowserAccessibility.Publish(view,ui.TitleVisible,ui.Blocking,busy,HasPending,ui.CulturalAvailable,ui.ConfirmationCandidates,ui.ActivePanel,ui.ActivePanelText);
+            ui.SetBusy(busy||turnQueued,thinking);
+            BrowserAccessibility.Publish(view,ui.TitleVisible,ui.Blocking,busy||turnQueued,HasPending,ui.CulturalAvailable,ui.ConfirmationCandidates,ui.ActivePanel,ui.ActivePanelText,ui.StoryText,ui.DiagnosticEvidence);
             if (world.Player == null || ui.TitleVisible) return;
-            world.Player.CanMove=!busy && !HasPending && !ui.Blocking && !ui.TextFocused && string.IsNullOrEmpty(view.state.ending);
-            if (Input.GetKeyDown(KeyCode.Escape) && !busy) ui.ShowPause();
+            world.Player.CanMove=!busy && !turnQueued && !HasPending && !ui.Blocking && !ui.TextFocused && string.IsNullOrEmpty(view.state.ending);
+            if(Input.GetKeyDown(KeyCode.Escape)&&!busy){if(ui.TextFocused)EventSystem.current.SetSelectedGameObject(null);else if(ui.Blocking&&string.IsNullOrEmpty(view.state.ending))OnBrowserCommand("continue");else if(string.IsNullOrEmpty(view.state.ending))ui.ShowPause();}
+            if(!busy&&!ui.TextFocused&&string.IsNullOrEmpty(view.state.ending)){if(Input.GetKeyDown(KeyCode.J))ui.ShowJournal();if(Input.GetKeyDown(KeyCode.C))ui.ShowScanner();}
             if (Input.GetKeyDown(KeyCode.E) && world.Player.CanMove) StartCoroutine(InteractNearest());
             if (Time.unscaledTime >= nextSave && world.Player.CanMove)
             { nextSave=Time.unscaledTime+.75f; if (Vector2.Distance(world.Player.Position,new Vector2(view.state.x,view.state.y)) > .05f) StartCoroutine(FlushPosition()); }
@@ -55,6 +62,9 @@ namespace InfiniteStories
             if (busy || HasPending || view==null || ui.TitleVisible) return;
             if (command=="title") { StartCoroutine(SaveAndTitle()); return; }
             if (command=="continue") { ui.ShowGame(view); if (!string.IsNullOrEmpty(view.state.ending)) ui.ShowEnding(view); return; }
+            if (command=="sound") { ui.ToggleSound();return; }
+            if(command.StartsWith("scan:",StringComparison.Ordinal)){ui.SetScannerTool(command.Substring(5));return;}
+            if (command=="story") { ui.ShowStory();return; }
             if (command=="compare") { ui.ToggleScannerComparison(); return; }
             if (command=="scanner") { world.Player.StopInput(); ui.ShowScanner(); return; }
             if (command=="journal") { world.Player.StopInput(); ui.ShowJournal(); return; }
@@ -82,7 +92,7 @@ namespace InfiniteStories
         }
         IEnumerator LoadCapabilities()
         {
-            yield return api.ReadCapabilities(value=>{ ui.ReplayVerification=value.verification_mode=="captured_response_replay"; ui.SetCulturalAvailability(value.cultural_generation); if(ui.ReplayVerification)ui.Status("Verification service ready. Cultural results are saved-response replay, not live calls."); },()=>ui.Status("The journey service is unavailable. You can retry or resume your last confirmed save."));
+            yield return api.ReadCapabilities(value=>{ ui.ReplayVerification=value.verification_mode=="captured_response_replay";ui.SetModelMode(value.game_master_inference_mode); ui.SetCulturalAvailability(value.cultural_generation); if(ui.ReplayVerification)ui.Status("Qloo: saved-response replay, not live calls. Game Master: "+(value.game_master_inference_mode=="local_loopback"?"actual local model.":"unavailable on this service.")+""); },()=>ui.Status("The journey service is unavailable. You can retry or resume your last confirmed save."));
         }
         public void OnBrowserCulturalSeed(string json)
         {
@@ -118,7 +128,7 @@ namespace InfiniteStories
             if (view != null && incoming.session_id == view.session_id && incoming.revision < view.revision) return;
             if (view!=null && view.session_id!=incoming.session_id) world.Clear();
             view=incoming; PlayerPrefs.SetString(SessionKey,view.session_id); PlayerPrefs.Save();
-            world.Show(view.location,view.state.x,view.state.y); ui.ShowGame(view);
+            world.Show(view.location,view.state.x,view.state.y); world.ConfirmStory(view.state); ui.ShowGame(view);
             if (!string.IsNullOrEmpty(view.state.ending)) ui.ShowEnding(view);
         }
         IEnumerator Write(string path, string json)
@@ -143,7 +153,7 @@ namespace InfiniteStories
                     (error.code != null && error.code.StartsWith("MODEL_", StringComparison.Ordinal)))
                 { PlayerPrefs.DeleteKey(PendingKey); PlayerPrefs.Save(); uncertain=false; }
                 if (view != null && world.Player != null) world.Player.Restore(view.state.x,view.state.y);
-                ui.Status(error.message + (uncertain ? " Retry the pending request to confirm its outcome." : ""));
+                ui.ServiceError(error.code,error.message,uncertain);
                 if (error.code=="QLOO_AMBIGUOUS") ui.ShowEntityConfirmation(error.details,()=>NewGame("cultural"));
                 if (error.code=="STALE_REVISION") reloadStale=true;
             });
@@ -181,13 +191,18 @@ namespace InfiniteStories
                 if (d <= distance) { nearest=obj; distance=d; }
             }
             if (nearest==null) { ui.Status("Move closer to a resident, object or arch, then press E."); yield break; }
+            world.Emphasize(nearest.id);
             ui.ShowDialogue(view,nearest,command => { if (!busy && !HasPending) StartCoroutine(Act(command)); });
         }
+        public void OnBrowserTurn(string text){if(enabled&&!busy&&!turnQueued&&!HasPending&&view!=null&&!ui.TitleVisible&&(!ui.Blocking||ui.ActivePanel=="dialogue")&&string.IsNullOrEmpty(view.state.ending)&&!string.IsNullOrWhiteSpace(text)&&text.Length<=1000){if(ui.ActivePanel=="dialogue")ui.CloseDialogue();turnQueued=true;StartCoroutine(SaveThenTurn(text));}}
         IEnumerator SaveThenTurn(string text)
         {
-            yield return FlushPosition(); if (busy || HasPending) yield break;
-            var request=new TurnRequest { request_id=Guid.NewGuid().ToString(), expected_revision=view.revision, text=text };
-            yield return Write("/v1/sessions/"+view.session_id+"/turns",JsonUtility.ToJson(request));
+            try {
+                yield return FlushPosition(); if (busy || HasPending) yield break;
+                var request=new TurnRequest { request_id=Guid.NewGuid().ToString(), expected_revision=view.revision, text=text };
+                thinking=true;ui.Status("The Game Master is considering your action. Your confirmed progress is safe.");
+                yield return Write("/v1/sessions/"+view.session_id+"/turns",JsonUtility.ToJson(request));
+            } finally {thinking=false;turnQueued=false;}
         }
         IEnumerator SaveAndTitle()
         {

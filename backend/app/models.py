@@ -94,7 +94,7 @@ class CulturalLink(StrictModel):
 class CulturalContext(StrictModel):
     schema_version: Literal[1] = 1
     source: Literal["qloo"] = "qloo"
-    rule_version: Literal["cultural-cards-v1"] = "cultural-cards-v1"
+    rule_version: Literal["cultural-cards-v1", "cultural-investigation-v2"] = "cultural-cards-v1"
     links: list[CulturalLink] = Field(min_length=1, max_length=5)
 
 

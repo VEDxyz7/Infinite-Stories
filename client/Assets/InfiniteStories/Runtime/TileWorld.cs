@@ -8,7 +8,7 @@ namespace InfiniteStories
     {
         readonly List<Object> assets = new List<Object>();
         readonly List<CityCharacter> residents = new List<CityCharacter>();
-        GameObject area;
+        Camera worldCamera;GameObject area; VenueFurniture furniture;TextMesh interactionHint;WorldObject[] points;
         public PlayerMotor Player { get; private set; }
         public string LocationId { get; private set; }
         public PlayerMotor AvatarPrefab { get; set; }
@@ -17,7 +17,7 @@ namespace InfiniteStories
             location.Validate();
             if (LocationId != location.id)
             {
-                Clear(); LocationId = location.id;
+                Clear(); LocationId = location.id;points=location.objects;
                 area = new GameObject(location.name); area.transform.SetParent(transform);
                 var grid = area.AddComponent<Grid>(); grid.cellSize = Vector3.one;
                 Tilemap floor = Layer("Paving", 0, false), walls = Layer("Stone", 1, true);
@@ -31,7 +31,7 @@ namespace InfiniteStories
                 {
                     Vector3Int cell = new Vector3Int(ix, iy, 0);
                     bool lane=iy>=4&&iy<=6;
-                    bool venue=ix>=12&&ix<=22&&iy>=8&&iy<=14;
+                    bool venue=ix>=5&&ix<=26&&iy>=8&&iy<=15;
                     floor.SetTile(cell, lane ? (ix>=22&&ix<=24 ? crossing:iy==6?upperCurb:iy==4?lowerCurb:ix%4==0?line:road) : venue ? room : paving[(ix * 17 + iy * 13) % 3]);
                     char value = location.rows[iy][ix]; if (value != '0') walls.SetTile(cell, value == '2' ? water : stone);
                 }
@@ -39,7 +39,7 @@ namespace InfiniteStories
                 int resident=1;
                 foreach (WorldObject obj in location.objects)
                 {
-                    var marker = new GameObject(obj.name); marker.transform.SetParent(area.transform);
+                    var marker = new GameObject(obj.id); marker.transform.SetParent(area.transform);
                     marker.transform.position = new Vector3(obj.x, obj.y, 0);
                     var renderer = marker.AddComponent<SpriteRenderer>(); renderer.sortingOrder = 400-Mathf.RoundToInt(obj.y*10);
                     if(obj.kind=="npc" || obj.kind=="gate") {
@@ -49,24 +49,38 @@ namespace InfiniteStories
                         Shadow(obj.x,obj.y);
                     } else renderer.sprite = NightArt.Tile(obj.kind=="portal"?417:obj.id=="tram"?410:281);
                     if (obj.kind == "portal") { marker.transform.localScale = new Vector3(1.2f,1.8f,1); Glow(obj.x,obj.y,new Color(.3f,.8f,.78f,.12f),2.6f); }
+                    bool screening=obj.id.StartsWith("screening_note_",System.StringComparison.Ordinal), memory=obj.id.StartsWith("cultural_echo_",System.StringComparison.Ordinal);
+                    if(screening||memory){marker.transform.localScale=Vector3.one*.70f;renderer.sortingOrder=3;Glow(obj.x,obj.y,new Color(.94f,.72f,.37f,.16f),1.8f);}
                     var label = new GameObject("Label").AddComponent<TextMesh>(); label.transform.SetParent(marker.transform);
-                    label.transform.localPosition = new Vector3(0, 1.65f, 0); label.text = obj.kind=="gate" ? "CURATOR · "+obj.name : obj.name;
-                    label.characterSize = .09f; label.fontSize = 48; label.anchor = TextAnchor.MiddleCenter;
+                    label.transform.localPosition = new Vector3(0, 1.65f, 0); label.text = obj.kind=="gate" ? "CURATOR · LAST GATE" : screening ? "SCREENING NOTE "+(int.Parse(obj.id.Substring("screening_note_".Length))+1) : memory ? "MEMORY CARD "+(int.Parse(obj.id.Substring("cultural_echo_".Length))+1) : obj.name;
+                    label.characterSize = .08f; label.fontSize = 48; label.anchor = TextAnchor.MiddleCenter;
                     label.color = new Color(.89f,.9f,.85f); label.GetComponent<MeshRenderer>().sortingOrder = 600;
                 }
                 if (AvatarPrefab != null) Player = Instantiate(AvatarPrefab, area.transform);
                 else { var playerObject = new GameObject("Traveler"); playerObject.transform.SetParent(area.transform); Player = playerObject.AddComponent<PlayerMotor>(); }
+                interactionHint=new GameObject("Nearby interaction").AddComponent<TextMesh>();interactionHint.transform.SetParent(area.transform);interactionHint.fontSize=48;interactionHint.characterSize=.065f;interactionHint.anchor=TextAnchor.MiddleCenter;interactionHint.color=new Color(.94f,.72f,.37f);interactionHint.GetComponent<MeshRenderer>().sortingOrder=620;
                 Camera camera = Camera.main;
                 if (camera == null) { var go = new GameObject("World Camera"); camera = go.AddComponent<Camera>(); go.tag = "MainCamera"; }
                 if(camera.GetComponent<AudioListener>()==null && FindFirstObjectByType<AudioListener>()==null) camera.gameObject.AddComponent<AudioListener>();
-                camera.orthographic = true; camera.orthographicSize = 10; camera.backgroundColor = new Color(.025f,.035f,.065f);
+                worldCamera=camera;camera.clearFlags=CameraClearFlags.SolidColor;camera.orthographic = true; camera.orthographicSize = 7; camera.rect=new Rect(0,.18f,1,.735f); camera.backgroundColor = new Color(.025f,.035f,.065f);
                 camera.transform.position = new Vector3(15.5f, 8.5f, -10);
             }
             Player.Restore(x, y);
         }
+        public void ConfirmStory(GameState state){furniture?.Confirm(state);}
+        public void Emphasize(string id){area?.transform.Find(id)?.GetComponent<CityCharacter>()?.Emphasize();}
         void LateUpdate()
         {
             if(Player==null)return;
+            var camera=worldCamera!=null?worldCamera:Camera.main;
+            if(camera!=null){
+                var ui=GetComponent<GameUI>();camera.enabled=ui==null||!ui.TitleVisible;camera.rect=ui!=null?ui.WorldViewport:new Rect(0,.18f,1,.735f);camera.aspect=(Screen.width*camera.rect.width)/(Screen.height*camera.rect.height);camera.orthographicSize=6.8f;
+                float half=camera.orthographicSize,wide=half*camera.aspect;
+                camera.transform.position=new Vector3(Mathf.Clamp(Player.Position.x,Mathf.Min(wide-1,15.5f),Mathf.Max(31-wide,15.5f)),Mathf.Clamp(Player.Position.y+1.8f,8.5f,18-half),-10);
+            }
+            WorldObject nearest=null;float distance=1.75f;
+            foreach(var point in points??System.Array.Empty<WorldObject>()){float d=Vector2.Distance(Player.Position,new Vector2(point.x,point.y));if(d<=distance){nearest=point;distance=d;}}
+            if(interactionHint!=null){interactionHint.text=nearest==null||(GetComponent<GameUI>()?.Blocking??false)?"":nearest.kind=="portal"?"[ E ]  Enter":nearest.kind=="npc"?"[ E ]  Talk":"[ E ]  Inspect";interactionHint.transform.position=new Vector3(Player.Position.x,Player.Position.y-.6f,0);}
             foreach(var resident in residents)if(resident!=null) {
                 Vector2 toward=Player.Position-(Vector2)resident.transform.position;
                 if(toward.sqrMagnitude<9)resident.Pose(toward,false);
@@ -110,9 +124,10 @@ namespace InfiniteStories
                 Prop(165,x,16,cool,4);Prop(192,x,15,cool,4);Glow(x,15.6f,new Color(1,.72f,.4f,.13f),3.5f);
             }
             VenueDetails(location.id);
+            var interior=new GameObject("Furnished interior");interior.transform.SetParent(area.transform);furniture=interior.AddComponent<VenueFurniture>();furniture.Build(location);
             var rain=new GameObject("Local night rain");rain.transform.SetParent(area.transform);rain.AddComponent<NightRain>();
             var sign=new GameObject("Venue sign").AddComponent<TextMesh>();sign.transform.SetParent(area.transform);sign.transform.position=new Vector3(19,15.6f,0);
-            sign.text=NightArt.Venue(location.id);sign.fontSize=64;sign.characterSize=.11f;sign.anchor=TextAnchor.MiddleCenter;sign.color=warm;sign.GetComponent<MeshRenderer>().sortingOrder=500;
+            sign.text=NightArt.Venue(location.id);sign.fontSize=64;sign.characterSize=.065f;sign.anchor=TextAnchor.MiddleCenter;sign.color=warm;sign.GetComponent<MeshRenderer>().sortingOrder=500;
         }
         void VenueDetails(string id)
         {
@@ -146,6 +161,6 @@ namespace InfiniteStories
             foreach (Object asset in assets) if (asset != null) Destroy(asset);
             assets.Clear();residents.Clear(); Player = null; LocationId = null;
         }
-        void OnDestroy() { Clear(); }
+        void OnDestroy() { if(worldCamera!=null)worldCamera.enabled=true;Clear(); }
     }
 }

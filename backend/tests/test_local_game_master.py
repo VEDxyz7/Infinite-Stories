@@ -252,6 +252,9 @@ def test_schema_only_contains_engine_eligible_actions():
     assert "choices" not in prompt_context["nearby"][0]
     assert "grants" not in json.dumps(prompt_context["nearby"])
     assert prompt_context["flags"] == []
+    offered = next(a for a in prompt_context["available_actions"] if a["action_id"] == "choose:mara:take_map")
+    assert offered["effects_if_committed"] == {"story_tokens": ["map"], "ending": ""}
+    assert state.flags == []  # Projected effects are not committed possessions.
     assert "choose:mara:take_map" in allowed and "none" in allowed
     assert not any(action.startswith("read_cultural_evidence:") for action in allowed)
     assert "read_cultural_evidence:none" in requests[-2]["format"]["properties"]["tool_id"]["enum"]
@@ -337,7 +340,7 @@ def test_explicit_local_replay_factory(monkeypatch, tmp_path):
         assert diagnostic["planner_fields"] == ["tool_id"]
         assert (
             diagnostic["loaded_method_sha256"]["run"]
-            == hashlib.sha256(marshal.dumps(local_game_master.OllamaGameMaster.run.__code__)).hexdigest()
+            == hashlib.sha256(marshal.dumps(local_game_master.OllamaGameMaster.run.__code__, 2)).hexdigest()
         )
         assert diagnostic["latest_turn_inference_requests"] is None
         assert "/verification/local-ai/adapter" not in client.get("/openapi.json").json()["paths"]

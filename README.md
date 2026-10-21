@@ -17,6 +17,14 @@ work. Local inference requires an accessible machine running the model; it is no
 free public hosting. Historical test reports and private provider captures are
 intentionally excluded from this repository.
 
+New cultural runs follow a complete evidence chain: Mara's map → Ivo's screening
+notes → Sera's memory cards and privacy promise → a supported affinity claim to
+the Curator → an ending and Taste Card. Only entering a district spends a visit;
+looking, talking and rejected claims are free. Older saves retain their original
+rules. The Scanner searches this run's saved catalogue, shows related results and
+provenance, tracks progress and records nearby validated discoveries; it does not
+silently perform live searches. See [the gameplay specification](docs/GAMEPLAY_SPEC.md).
+
 ## Backend
 
 Use Python3.12. From the repository root:
@@ -54,7 +62,8 @@ IS_PUBLIC_API_URL=http://127.0.0.1:8042 "$UNITY_EDITOR" -batchmode -quit -projec
 python3 -m http.server 8080 --bind 127.0.0.1 --directory client/Builds/WebDevelopment
 ```
 
-Open http://127.0.0.1:8080 . WASD/arrows move, E interacts and Esc pauses.
+Open http://127.0.0.1:8080 . WASD/arrows move, E interacts, C opens the Scanner, J opens the Journal,
+and Esc closes a panel or opens the menu.
 Accessible HTML controls use the same Unity controller. Scanner and Journal show
 confirmed cultural evidence and progress; the Qloo-off comparison is labelled
 invented authored control and never changes saved context. Resume uses this
@@ -108,7 +117,10 @@ Ordinary tests use synthetic/controlled HTTP responses, not live providers.
 Real PostgreSQL tests require a **disposable** `IS_TEST_POSTGRES_URL`; alternatively
 run `.venv/bin/python -m scripts.verify_postgres --output /tmp/NEW_EVIDENCE.json`
 with PostgreSQL17 binaries installed. Unity HTTP tests require a running backend
-and `IS_UNITY_HTTP_TESTS=1`; set `IS_UNITY_TEST_API_URL` if needed.
+and `IS_UNITY_HTTP_TESTS=1`; set `IS_UNITY_TEST_API_URL` if needed. The
+free-form input focus check requires a backend advertising a configured Game
+Master; the client deliberately disables that input when the model is unavailable.
+The HTTP suite does not invoke the model.
 
 Private cultural captures are not redistributed. Capture-dependent tests and
 explicit replay factories require local files under ignored `reports/local/`;

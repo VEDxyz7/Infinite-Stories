@@ -1,7 +1,9 @@
 """Deterministic original quest content from validated Qloo evidence; no provider calls."""
 
 from .content import validate_chapter
+from .investigation import decorate, enabled
 from .models import Choice, WorldObject
+from .presentation import dress_chapter
 
 SETTINGS = {
     "urn:tag:theme:qloo:art_and_creativity": (
@@ -40,9 +42,9 @@ def select_setting(seed, entities):
 
 
 def chapter_for_state(base, state):
-    if state.cultural_context is None:
-        return base
     chapter = base.model_copy(deep=True)
+    if state.cultural_context is None:
+        return dress_chapter(chapter, state)
     chapter.source = "qloo_informed"
     archive = next(loc for loc in chapter.locations if loc.id == "archive")
     requirements = []
@@ -67,7 +69,11 @@ def chapter_for_state(base, state):
                         label="Carry the card: " + selected.name,
                         requires=["rhythm"],
                         grants=[flag],
-                        text=f"You carry the {selected.name} card to Sera. A new memory joins the chronicle.",
+                        text=(
+                            f"You carry the {selected.name} card to Sera. Its saved affinity is ready for her chronicle; your promise is still needed."
+                            if enabled(state)
+                            else f"You carry the {selected.name} card to Sera. A new memory joins the chronicle."
+                        ),
                     )
                 ],
             )
@@ -78,8 +84,9 @@ def chapter_for_state(base, state):
             for choice in obj.choices:
                 choice.requires.extend(requirements)
     archive.description = "A chamber of cultural echoes, shaped by your selected interests and Qloo recommendations."
+    decorate(chapter, state)
     validate_chapter(chapter)
-    return chapter
+    return dress_chapter(chapter, state)
 
 
 def cultural_evidence_text(link):

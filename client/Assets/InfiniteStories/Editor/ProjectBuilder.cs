@@ -69,7 +69,25 @@ namespace InfiniteStories.Editor
             try { BuildWebPlayer(true,"Builds/VisualVerification"); }
             finally { settings=AssetDatabase.LoadAssetAtPath<ClientSettings>("Assets/InfiniteStories/Resources/ClientSettings.asset"); if(settings!=null){settings.apiOrigin=original;EditorUtility.SetDirty(settings);AssetDatabase.SaveAssets();} }
         }
-        static void BuildWebPlayer(bool development, string output=null)
+        public static void BuildPhase2BWeb()
+        {
+            var settings=AssetDatabase.LoadAssetAtPath<ClientSettings>("Assets/InfiniteStories/Resources/ClientSettings.asset");string original=settings.apiOrigin;
+            try{BuildWebPlayer(true,"Builds/Phase2B");}
+            finally{settings=AssetDatabase.LoadAssetAtPath<ClientSettings>("Assets/InfiniteStories/Resources/ClientSettings.asset");if(settings!=null){settings.apiOrigin=original;EditorUtility.SetDirty(settings);AssetDatabase.SaveAssets();}}
+        }
+        public static void BuildPlayerPresentationWeb()
+        {
+            var settings=AssetDatabase.LoadAssetAtPath<ClientSettings>("Assets/InfiniteStories/Resources/ClientSettings.asset");string original=settings.apiOrigin;
+            try{BuildWebPlayer(true,"Builds/PlayerPresentation",true);}
+            finally{settings=AssetDatabase.LoadAssetAtPath<ClientSettings>("Assets/InfiniteStories/Resources/ClientSettings.asset");if(settings!=null){settings.apiOrigin=original;EditorUtility.SetDirty(settings);AssetDatabase.SaveAssets();}}
+        }
+        public static void BuildInvestigationWeb()
+        {
+            var settings=AssetDatabase.LoadAssetAtPath<ClientSettings>("Assets/InfiniteStories/Resources/ClientSettings.asset");string original=settings.apiOrigin;
+            try{BuildWebPlayer(true,"Builds/Investigation",true);}
+            finally{settings=AssetDatabase.LoadAssetAtPath<ClientSettings>("Assets/InfiniteStories/Resources/ClientSettings.asset");if(settings!=null){settings.apiOrigin=original;EditorUtility.SetDirty(settings);AssetDatabase.SaveAssets();}}
+        }
+        static void BuildWebPlayer(bool development, string output=null,bool cleanPreview=false)
         {
             Prepare();
             var settings=AssetDatabase.LoadAssetAtPath<ClientSettings>("Assets/InfiniteStories/Resources/ClientSettings.asset");
@@ -79,9 +97,10 @@ namespace InfiniteStories.Editor
             var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions {
                 scenes=new[] { "Assets/InfiniteStories/Scenes/Chapter.unity" },
                 locationPathName=output ?? (development ? "Builds/WebDevelopment" : "Builds/Web"), target=BuildTarget.WebGL,
-                options=development ? BuildOptions.Development : BuildOptions.None });
+                extraScriptingDefines=cleanPreview ? new[]{"INFINITE_STORIES_LOCAL_PREVIEW"}:Array.Empty<string>(),
+                options=development&&!cleanPreview ? BuildOptions.Development : BuildOptions.None });
             if (report.summary.result!=BuildResult.Succeeded) throw new BuildFailedException("The Unity Web build failed; inspect the Editor log.");
-            Debug.Log($"Infinite Stories Web build succeeded: development={development}; bytes={report.summary.totalSize}");
+            Debug.Log($"Infinite Stories Web build succeeded: development={development&&!cleanPreview}; localPreview={cleanPreview}; bytes={report.summary.totalSize}");
         }
     }
 }

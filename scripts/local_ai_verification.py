@@ -61,8 +61,10 @@ def create_local_ai_app():
         "protocol": "ollama-typed-tool-plan-v1",
         "pid": os.getpid(),
         "source_sha256_at_startup": hashlib.sha256(Path(local_game_master.__file__).read_bytes()).hexdigest(),
+        # Marshal v3+ reference flags depend on live object refcounts. v2 avoids
+        # a diagnostic changing merely because an async frame starts/stops.
         "loaded_method_sha256": {
-            name: hashlib.sha256(marshal.dumps(getattr(OllamaGameMaster, name).__code__)).hexdigest()
+            name: hashlib.sha256(marshal.dumps(getattr(OllamaGameMaster, name).__code__, 2)).hexdigest()
             for name in ("run", "_query", "_propose")
         },
         "planner_fields": list(local_game_master.ToolPlan.model_fields),

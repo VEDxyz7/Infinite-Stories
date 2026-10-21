@@ -2,6 +2,7 @@ import math
 
 from .content import current_location, walkable
 from .culture import chapter_for_state
+from .investigation import enabled
 from .models import Chapter, Command, DomainError, GameState, GameView
 
 
@@ -42,6 +43,15 @@ def apply_command(chapter: Chapter, original: GameState, command: Command) -> tu
             state.visits += 1
             narrative = next(loc.description for loc in chapter.locations if loc.id == obj.destination)
     elif command.kind == "choose":
+        if (
+            enabled(state)
+            and command.choice.startswith("hypothesis_")
+            and any(c.id == command.choice for c in obj.choices)
+        ):
+            raise DomainError(
+                "EVIDENCE_UNSUPPORTED",
+                "Saved Qloo recommendations support aggregate affinity, not collaboration or a personality claim. Inspect the actual connection and try again; no visit was spent.",
+            )
         choice = next((c for c in obj.choices if c.id == command.choice), None)
         if choice is None or not set(choice.requires) <= set(state.flags):
             raise DomainError("PREREQUISITE_MISSING", "That choice is not currently available.")
@@ -90,6 +100,21 @@ def game_view(chapter: Chapter, state: GameState, session_id: str, revision: int
         if state.cultural_context
         else []
     )
+    if enabled(state):
+        cultural_objectives += [
+            {
+                "id": f"{stage}_{i}",
+                "label": (
+                    "Trace the screening connection for "
+                    if stage == "trace"
+                    else "Prove saved affinity to the Curator: "
+                )
+                + link.seed.name,
+                "completed": f"{stage}_{i}" in state.flags,
+            }
+            for stage in ("trace", "proof")
+            for i, link in enumerate(state.cultural_context.links)
+        ]
     result = {
         "schema_version": 1,
         "session_id": session_id,

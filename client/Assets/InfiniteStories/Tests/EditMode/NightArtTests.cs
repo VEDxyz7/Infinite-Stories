@@ -17,6 +17,23 @@ namespace InfiniteStories.Tests
                 Assert.AreEqual(12,sprite.pixelsPerUnit); Assert.Less(sprite.pivot.y,3,"Feet pivot must align with authoritative circle position.");
             }
         }
+        [Test] public void ScannerToolsAreReadOnlyGroundedAndQueryOnlySavedNames()
+        {
+            // Synthetic rendering DTO, never live-provider evidence.
+            var seed=new CulturalEntity{entity_id="seed-test",name="Example artist",category="artist"};
+            var result=new CulturalEntity{entity_id="result-test",name="Example film",category="movie",tags=new CulturalTag[0]};
+            var state=new GameState{flags=new[]{"trace_0"},visits=4,cultural_context=new CulturalContext{rule_version="cultural-investigation-v2",links=new[]{new CulturalLink{seed=seed,recommendations=new[]{result},selected_id=result.entity_id,setting="Fictional stage",evidence=new CulturalEvidence[0]}}}};
+            var view=new GameView{state=state};string before=JsonUtility.ToJson(state);
+            StringAssert.Contains("Example artist",GameUI.ScannerText(view,0,"ARTIST",true));
+            StringAssert.DoesNotContain("Example film",GameUI.ScannerText(view,0,"ARTIST",true));
+            StringAssert.Contains("No saved entity matches",GameUI.ScannerText(view,0,"no-such-entity",true));
+            StringAssert.Contains("Example artist -> Example film",GameUI.ScannerText(view,1,"",true));
+            StringAssert.Contains("result-test",GameUI.ScannerText(view,2,"",true));
+            string progress=GameUI.ScannerText(view,3,"",true);
+            StringAssert.Contains("CONFIRMED · Ivo",progress);StringAssert.Contains("MISSING · Sera",progress);
+            StringAssert.Contains("currently allowed server choice",GameUI.ScannerText(view,4,"",true));
+            Assert.AreEqual(before,JsonUtility.ToJson(state));
+        }
         [Test] public void ScannerRetainsSavedIdentifiersMetadataAndEvidenceWithoutInventingFacts()
         {
             // Explicit synthetic DTO tests for rendering; not provider verification.
@@ -27,6 +44,9 @@ namespace InfiniteStories.Tests
             }}}}};
             string text=GameUI.EvidenceText(view,true);
             foreach(string value in new[]{"LOCAL CAPTURE REPLAY","seed-test-only","film-test-only","Test tag","test-digest","fictional interpretation","not facts about your personality"})StringAssert.Contains(value,text);
+            string player=GameUI.EvidenceText(view,true,true,false);
+            StringAssert.Contains("REPLAY PREVIEW",player);StringAssert.Contains("Synthetic film",player);
+            foreach(string value in new[]{"seed-test-only","film-test-only","test-digest","https://example.invalid"})StringAssert.DoesNotContain(value,player);
             string control=GameUI.EvidenceText(view,true,false);StringAssert.Contains("AUTHORED CONTROL",control);StringAssert.Contains("Invented",control);StringAssert.DoesNotContain("Synthetic film",control);
             Assert.AreEqual("film-test-only",view.state.cultural_context.links[0].selected_id,"Comparison must never mutate saved context.");
         }

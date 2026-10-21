@@ -47,10 +47,10 @@ namespace InfiniteStories
     [Serializable] public class CulturalEvidence { public string origin, path, retrieved_at, body_sha256; public int elapsed_ms; }
     [Serializable] public class CulturalEntity { public string entity_id, name, category, description, content_rating, disambiguation; public int year; public CulturalTag[] tags; }
     [Serializable] public class CulturalLink { public CulturalEntity seed; public CulturalEntity[] recommendations; public string selected_id, setting; public CulturalEvidence[] evidence; }
-    [Serializable] public class CulturalContext { public int schema_version; public string source; public CulturalLink[] links; }
+    [Serializable] public class CulturalContext { public int schema_version; public string source,rule_version; public CulturalLink[] links; }
     [Serializable] public class EntityCandidate { public string entity_id, name, category, disambiguation; }
     [Serializable] public class ErrorDetails { public int interest_index; public EntityCandidate[] candidates; }
-    [Serializable] public class Capabilities { public int schema_version; public bool cultural_generation; public string[] cultural_categories; public string verification_mode; }
+    [Serializable] public class Capabilities { public int schema_version; public bool cultural_generation; public string[] cultural_categories; public string verification_mode; public string game_master_inference_mode; }
     [Serializable] public class ApiError { public string code; public string message; public string request_id; public ErrorDetails details; }
     [Serializable] public class ErrorEnvelope { public ApiError error; }
     [Serializable] public class PendingRequest { public string path; public string method; public string json; }

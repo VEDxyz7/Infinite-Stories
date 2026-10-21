@@ -16,8 +16,11 @@
           "type": "string"
         },
         "rule_version": {
-          "const": "cultural-cards-v1",
           "default": "cultural-cards-v1",
+          "enum": [
+            "cultural-cards-v1",
+            "cultural-investigation-v2"
+          ],
           "title": "Rule Version",
           "type": "string"
         },

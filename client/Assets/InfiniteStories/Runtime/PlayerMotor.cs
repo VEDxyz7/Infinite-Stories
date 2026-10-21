@@ -9,7 +9,7 @@ namespace InfiniteStories
         public float Speed { get; set; } = 3f;
         Rigidbody2D body;
         SpriteRenderer visual;
-        CityCharacter character;
+        CityCharacter character; CityAudio audioCues;Vector2 stepPosition;float nextStep;
         Vector2 input;
         Vector2 accessibleDirection;
         float accessibleRemaining;
@@ -20,6 +20,7 @@ namespace InfiniteStories
             body.interpolation = RigidbodyInterpolation2D.Interpolate; body.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
             GetComponent<CircleCollider2D>().radius = 0.28f;
             visual = GetComponent<SpriteRenderer>(); visual.sortingOrder = 20;
+            audioCues=FindFirstObjectByType<CityAudio>();
             character = gameObject.AddComponent<CityCharacter>(); character.Actor=0; character.Pose(Vector2.zero,false);
         }
         void Update()
@@ -28,6 +29,7 @@ namespace InfiniteStories
                 new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             input = CanMove ? direction.normalized : Vector2.zero;
             character.Pose(input,input.sqrMagnitude > 0);
+            if(CanMove&&Time.unscaledTime>nextStep&&Vector2.Distance(Position,stepPosition)>.65f){audioCues?.Step();stepPosition=Position;nextStep=Time.unscaledTime+.25f;}
         }
         void FixedUpdate()
         {
@@ -42,6 +44,6 @@ namespace InfiniteStories
         // Accessible buttons use the same physics controller and collision path as keys.
         public void Nudge(Vector2 direction) { accessibleDirection=direction.normalized; accessibleRemaining=.32f; }
         public void StopInput() { accessibleRemaining=0; input=Vector2.zero; if (body!=null) body.linearVelocity=Vector2.zero; }
-        public void Restore(float x, float y) { body.position = new Vector2(x, y); body.linearVelocity = Vector2.zero; }
+        public void Restore(float x, float y) { body.position = new Vector2(x, y); stepPosition=body.position; body.linearVelocity = Vector2.zero; }
     }
 }

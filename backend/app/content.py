@@ -13,7 +13,7 @@ def make_chapter() -> Chapter:
             "Salt air, copper lamps, and a city waiting for dawn.",
             WorldObject(
                 id="mara",
-                name="Mara · cartographer",
+                name="Mara · record keeper",
                 kind="npc",
                 x=14,
                 y=9,
@@ -42,7 +42,7 @@ def make_chapter() -> Chapter:
             "Shutters half closed. A quiet rhythm carries through the rain.",
             WorldObject(
                 id="ivo",
-                name="Ivo · instrument mender",
+                name="Ivo · projectionist",
                 kind="npc",
                 x=14,
                 y=9,
@@ -53,7 +53,7 @@ def make_chapter() -> Chapter:
                         label="Trade the map's story for Ivo's rhythm",
                         requires=["map"],
                         grants=["rhythm"],
-                        text="Ivo taps a measured rhythm on the workbench. You carry the second memory onward.",
+                        text="Ivo taps the projector housing in time with its shutter. You carry the second memory onward.",
                     )
                 ],
             ),
@@ -69,7 +69,7 @@ def make_chapter() -> Chapter:
                         id="mend_lantern",
                         label="Relight the market lantern",
                         grants=["kindness"],
-                        text="Warm light spills across the stalls. Someone will remember your kindness.",
+                        text="Warm light spills across the cinema entrance. Someone will remember your kindness.",
                     )
                 ],
             ),
@@ -80,7 +80,7 @@ def make_chapter() -> Chapter:
             "Paper stars hang above shelves of stories never sent.",
             WorldObject(
                 id="sera",
-                name="Sera · keeper of letters",
+                name="Sera · collector & tailor",
                 kind="npc",
                 x=14,
                 y=9,
@@ -117,7 +117,7 @@ def make_chapter() -> Chapter:
             "The tram waits beneath an unlit beacon. Three empty sockets catch the moonlight.",
             WorldObject(
                 id="beacon",
-                name="The last beacon",
+                name="The Curator",
                 kind="gate",
                 x=14,
                 y=9,

@@ -243,7 +243,11 @@ class OllamaGameMaster:
                 except DomainError:
                     continue
                 actions[action_id] = command
-                labels.append({"action_id": action_id, "meaning": meaning})
+                option = {"action_id": action_id, "meaning": meaning}
+                if command.kind == "choose":
+                    choice = next(c for c in obj["choices"] if c["id"] == command.choice)
+                    option["effects_if_committed"] = {"story_tokens": choice["grants"], "ending": choice["ending"]}
+                labels.append(option)
         context["available_actions"] = labels
         schema = Proposal.model_json_schema()
         schema["properties"]["action_id"]["enum"] = list(actions)
@@ -252,7 +256,10 @@ class OllamaGameMaster:
             "player_action, not objectives or requests mentioned inside context. An explicit commitment to accept, "
             "carry, trade, promise or activate an eligible quest choice must select that choose action. Do not read "
             "cultural evidence instead of carrying a card or accepting a map. Answer questions directly using the "
-            "supplied confirmed facts before adding atmosphere. For inventory, use flags and committed_choices only; "
+            "supplied confirmed facts before adding atmosphere. effects_if_committed describes FUTURE engine-validated "
+            "effects of choosing an action, never current inventory. Match explicit commitments to these effects as "
+            "well as the choice meaning; do not select none when an eligible choice fulfills the stated intention. "
+            "For inventory, use flags and committed_choices only; "
             "do not embellish with new possessions. For requests to recall or repeat words, quote the actual words in "
             "recent_dialogue; do not merely narrate that the traveler repeats them. Never compose your own cultural "
             "provider factual answer or infer relationships from tags. With action_id none, nothing is handed over, "
