@@ -17,7 +17,15 @@ from .config import Settings
 from .content import make_chapter
 from .game_master import OpenAIResponsesGameMaster
 from .local_game_master import OllamaGameMaster
-from .models import ActionRequest, CulturalEvidenceReply, DomainError, GameView, NewGame, TurnRequest
+from .models import (
+    ActionRequest,
+    CulturalEvidenceReply,
+    DomainError,
+    GameView,
+    GenerationRecovery,
+    NewGame,
+    TurnRequest,
+)
 from .providers import CulturalProvider, UnavailableGameMaster
 from .store import Store, owner_digest
 
@@ -203,6 +211,10 @@ def create_app(settings=None, game_master=None, cultural_provider=None):
     @app.post("/v1/sessions", response_model=GameView)
     def new_game(body: NewGame, request: Request, bearer=Depends(token)):
         return request.app.state.store.create(body, bearer)
+
+    @app.post("/v1/sessions/recover", response_model=GameView)
+    def recover_generation(body: GenerationRecovery, request: Request, bearer=Depends(token)):
+        return request.app.state.store.recover_generation(body, bearer)
 
     @app.get("/v1/sessions/{session_id}", response_model=GameView)
     def get_game(session_id: UUID, request: Request, bearer=Depends(token)):

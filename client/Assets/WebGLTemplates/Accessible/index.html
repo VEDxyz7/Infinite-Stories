@@ -39,7 +39,7 @@
     node.addEventListener('click',()=>{if(player)player.SendMessage('Infinite Stories','OnBrowserCommand',command)});
     document.getElementById(parent).appendChild(node);return node;
   }
-  for(const [label,command] of [['Start cultural journey','cultural'],['Play authored chapter','authored'],['Resume journey','resume'],['Save and return to title','title'],['Retry pending request','retry']])button('journey',label,command);
+  for(const [label,command] of [['Start cultural journey','cultural'],['Play authored chapter','authored'],['Resume journey','resume'],['Reload confirmed save','reload'],['Save and return to title','title'],['Retry pending request','retry']])button('journey',label,command);
   document.getElementById('culture-form').addEventListener('submit',event=>{
     event.preventDefault();
     if(player && current?.title && !current.busy && !current.pending){
@@ -69,6 +69,7 @@
       else if(c.startsWith('confirm:'))allowed=v.title;
       else if(c==='authored')allowed=v.title;
       else if(c==='resume')allowed=v.title||v.pending;
+      else if(c==='reload')allowed=true;
       else if(c==='retry')allowed=true;
       else if(c==='title'||c==='stop')allowed=!v.title;
       else if(c==='continue')allowed=!v.title&&v.blocked&&!v.ending;
@@ -79,7 +80,7 @@
       else allowed=!v.title&&!v.blocked&&!v.ending;
       if(['cultural','authored','resume'].includes(c))b.hidden=!v.title&&!v.pending;
       if(c==='title')b.hidden=v.title;
-      b.disabled=!player||!allowed||(v.busy&&c!=='stop')||(v.pending&&c!=='retry'&&c!=='resume'&&c!=='stop');
+      b.disabled=!player||!allowed||(v.busy&&c!=='stop')||(v.pending&&c!=='retry'&&c!=='resume'&&c!=='reload'&&c!=='stop');
     }
   }
   for(const [label,command] of [['Scanner','scanner'],['Journal','journal'],['Story','story'],['Sound on/off','sound'],['Qloo on/off comparison','compare']])button('interaction',label,command);

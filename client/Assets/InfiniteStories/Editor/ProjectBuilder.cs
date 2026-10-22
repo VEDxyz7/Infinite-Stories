@@ -87,6 +87,12 @@ namespace InfiniteStories.Editor
             try{BuildWebPlayer(true,"Builds/Investigation",true);}
             finally{settings=AssetDatabase.LoadAssetAtPath<ClientSettings>("Assets/InfiniteStories/Resources/ClientSettings.asset");if(settings!=null){settings.apiOrigin=original;EditorUtility.SetDirty(settings);AssetDatabase.SaveAssets();}}
         }
+        public static void BuildRecoveryVerificationWeb()
+        {
+            var settings=AssetDatabase.LoadAssetAtPath<ClientSettings>("Assets/InfiniteStories/Resources/ClientSettings.asset");string original=settings.apiOrigin;
+            try{BuildWebPlayer(true,"Builds/RecoveryVerification",true);}
+            finally{settings=AssetDatabase.LoadAssetAtPath<ClientSettings>("Assets/InfiniteStories/Resources/ClientSettings.asset");if(settings!=null){settings.apiOrigin=original;EditorUtility.SetDirty(settings);AssetDatabase.SaveAssets();}}
+        }
         static void BuildWebPlayer(bool development, string output=null,bool cleanPreview=false)
         {
             Prepare();

@@ -125,6 +125,62 @@
         }
       }
     },
+    "/v1/sessions/recover": {
+      "post": {
+        "summary": "Recover Generation",
+        "operationId": "recover_generation_v1_sessions_recover_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerationRecovery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameView"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/sessions/{session_id}": {
       "get": {
         "summary": "Get Game",
@@ -909,6 +965,31 @@
           "notices"
         ],
         "title": "GameView"
+      },
+      "GenerationRecovery": {
+        "properties": {
+          "creation": {
+            "$ref": "#/components/schemas/NewGame"
+          },
+          "previous_session_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Session Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "creation"
+        ],
+        "title": "GenerationRecovery"
       },
       "HTTPValidationError": {
         "properties": {

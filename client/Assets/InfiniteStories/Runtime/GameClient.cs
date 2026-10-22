@@ -29,7 +29,7 @@ namespace InfiniteStories
             try { settings.Validate(release); api.Origin=settings.apiOrigin; world.AvatarPrefab=settings.playerPrefab; }
             catch (ArgumentException error) { ui.Status(error.Message); enabled=false; return; }
             ui.RecordDiscovery=command=>{if(!busy&&!HasPending)StartCoroutine(Act(command));};
-            ui.Resume=Resume; ui.Reload=Resume; ui.Retry=Retry;
+            ui.Resume=Resume; ui.Reload=ReloadConfirmed; ui.Retry=Retry;
             ui.StartAuthored=() => NewGame("authored"); ui.StartCultural=() => NewGame("cultural");
             ui.SubmitTurn=() => OnBrowserTurn(ui.ActionText);
             ui.ReturnTitle=() => { if (!busy) StartCoroutine(SaveAndTitle()); };
@@ -58,6 +58,7 @@ namespace InfiniteStories
             if (command=="cultural") { NewGame("cultural"); return; }
             if (command=="authored") { NewGame("authored"); return; }
             if (command=="resume") { Resume(); return; }
+            if (command=="reload") { ReloadConfirmed(); return; }
             if (command=="retry") { Retry(); return; }
             if (busy || HasPending || view==null || ui.TitleVisible) return;
             if (command=="title") { StartCoroutine(SaveAndTitle()); return; }
@@ -112,10 +113,55 @@ namespace InfiniteStories
         void Resume()
         {
             if (busy) return;
-            if (HasPending) { Retry(); return; }
+            if (HasPending) {
+                var pending=ReadPending();
+                if (IsCulturalCreation(pending)) StartCoroutine(RecoverCreation(pending));
+                else Retry();
+                return;
+            }
             string id=PlayerPrefs.GetString(SessionKey,"");
             if (string.IsNullOrEmpty(id)) { ui.Status("No saved journey is linked to this browser. Start the authored chapter."); return; }
             StartCoroutine(Load(id));
+        }
+        PendingRequest ReadPending()
+        {
+            try { return JsonUtility.FromJson<PendingRequest>(PlayerPrefs.GetString(PendingKey)); }
+            catch (ArgumentException) { return null; }
+        }
+        static bool IsCulturalCreation(PendingRequest pending)
+        {
+            if(pending==null||pending.path!="/v1/sessions"||pending.method!="POST")return false;
+            try{return JsonUtility.FromJson<NewGameRequest>(pending.json)?.mode=="cultural";}
+            catch(ArgumentException){return false;}
+        }
+        void ReloadConfirmed()
+        {
+            if(busy)return;
+            var pending=ReadPending();
+            if(IsCulturalCreation(pending)){StartCoroutine(RecoverCreation(pending));return;}
+            string id=PlayerPrefs.GetString(SessionKey,"");
+            if(string.IsNullOrEmpty(id)){ui.Status("No confirmed save is linked here. Use Resume to recover a pending creation, or start a new journey.");return;}
+            // GET never replays a creation/provider operation. An uncertain action
+            // remains pending until its original receipt is explicitly retried.
+            StartCoroutine(Load(id));
+        }
+        IEnumerator RecoverCreation(PendingRequest pending)
+        {
+            busy=true;
+            var request=new GenerationRecoveryRequest{creation=JsonUtility.FromJson<NewGameRequest>(pending.json),previous_session_id=PlayerPrefs.GetString(SessionKey,"")};
+            ui.Status("Recovering your confirmed journey without repeating cultural requests…");
+            yield return api.Send("/v1/sessions/recover","POST",JsonUtility.ToJson(request),incoming=>{
+                PlayerPrefs.DeleteKey(PendingKey);PlayerPrefs.Save();Accept(incoming);
+                if(incoming.notices!=null)foreach(string notice in incoming.notices)if(notice.StartsWith("The new journey was not confirmed",StringComparison.Ordinal))ui.Status(notice);
+            },(error,uncertain)=>{
+                // Only the server can confirm cancellation. Network/validation
+                // failures retain the exact pending payload for safe recovery retry.
+                if(error.code=="QLOO_GENERATION_INTERRUPTED"){
+                    PlayerPrefs.DeleteKey(PendingKey);PlayerPrefs.Save();ui.ShowTitle(PlayerPrefs.HasKey(SessionKey));
+                }
+                ui.ServiceError(error.code,error.message,uncertain);
+            });
+            busy=false;
         }
         IEnumerator Load(string id)
         {
@@ -163,10 +209,10 @@ namespace InfiniteStories
         {
             if (busy) return;
             if (!HasPending) { ui.Status("There is no pending request."); return; }
-            PendingRequest pending=null;
-            try { pending=JsonUtility.FromJson<PendingRequest>(PlayerPrefs.GetString(PendingKey)); } catch (ArgumentException) { }
+            PendingRequest pending=ReadPending();
             if (pending == null || string.IsNullOrEmpty(pending.path)) { ui.Status("The local retry record is invalid; no request was sent."); return; }
-            StartCoroutine(RetryRoutine(pending));
+            if(IsCulturalCreation(pending))StartCoroutine(RecoverCreation(pending));
+            else StartCoroutine(RetryRoutine(pending));
         }
         IEnumerator RetryRoutine(PendingRequest pending) { busy=true; yield return Execute(pending); busy=false; }
         IEnumerator FlushPosition()

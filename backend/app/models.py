@@ -104,6 +104,23 @@ class NewGame(StrictModel):
     interests: list[Interest] = Field(default_factory=list, max_length=5)
 
 
+class GenerationRecovery(StrictModel):
+    # Original creation payload binds recovery to its owner/idempotency hash.
+    creation: NewGame
+    previous_session_id: UUID | None = None
+
+    @field_validator("previous_session_id", mode="before")
+    @classmethod
+    def empty_previous(cls, value):
+        return None if value == "" else value
+
+    @model_validator(mode="after")
+    def cultural_only(self):
+        if self.creation.mode != "cultural":
+            raise ValueError("Generation recovery requires a cultural creation")
+        return self
+
+
 class Command(StrictModel):
     kind: Literal["position", "interact", "choose", "travel", "inspect"]
     target: str = Field(default="", max_length=80)

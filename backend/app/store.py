@@ -95,6 +95,14 @@ def owner_digest(token):
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def interrupted_generation():
+    return DomainError(
+        "QLOO_GENERATION_INTERRUPTED",
+        "This new journey was not confirmed and will not be generated again under this request ID. No cultural evidence was accepted. Resume a confirmed save or deliberately start a new journey when the service is available.",
+        409,
+    )
+
+
 class Store:
     def __init__(self, url, chapter, session_days=30, cultural_provider=None):
         self.chapter, self.session_days, self.cultural_provider = chapter, session_days, cultural_provider
@@ -235,7 +243,11 @@ class Store:
                 with self.engine.begin() as connection:
                     connection.execute(
                         update(generations)
-                        .where(generations.c.owner == owner, generations.c.request_id == rid)
+                        .where(
+                            generations.c.owner == owner,
+                            generations.c.request_id == rid,
+                            generations.c.status == "pending",
+                        )
                         .values(
                             status="failed",
                             error={
@@ -253,6 +265,18 @@ class Store:
         gid = str(uuid4())
         try:
             with self.engine.begin() as connection:
+                if context is not None:
+                    claim = connection.execute(
+                        update(generations)
+                        .where(
+                            generations.c.owner == owner,
+                            generations.c.request_id == rid,
+                            generations.c.status == "pending",
+                        )
+                        .values(status="complete")
+                    )
+                    if claim.rowcount != 1:
+                        raise interrupted_generation()
                 connection.execute(
                     insert(games).values(
                         id=gid,
@@ -266,12 +290,6 @@ class Store:
                         gm_turns=0,
                     )
                 )
-                if context is not None:
-                    connection.execute(
-                        update(generations)
-                        .where(generations.c.owner == owner, generations.c.request_id == rid)
-                        .values(status="complete")
-                    )
                 return game_view(self.chapter, state, gid, 0, state.history[-1])
         except IntegrityError:
             # Authored concurrent creation shares the existing receipt as well.
@@ -287,6 +305,81 @@ class Store:
                     ) from None
                 row, state = self._row(connection, existing["id"], token)
                 return game_view(self.chapter, state, row["id"], row["revision"])
+
+    def recover_generation(self, request, token):
+        """Explicitly reconcile/cancel creation; never execute a provider call.
+
+        First write serializes with the creation commit on SQLite/PostgreSQL.
+        If creation committed first we return it. Otherwise a terminal tombstone
+        fences both in-flight and not-yet-arrived creation requests. Errors are
+        raised AFTER commit so absence of a previous save cannot undo cancellation.
+        """
+        owner, creation = owner_digest(token), request.creation
+        rid = str(creation.request_id)
+        fingerprint = digest(creation.model_dump(mode="json", exclude_none=True))
+        error = interrupted_generation()
+        failure = {"code": error.code, "message": error.message, "status": error.status, "details": None}
+        result = None
+        with self.engine.begin() as connection:
+            dialect_insert = sqlite_insert if self.engine.dialect.name == "sqlite" else postgres_insert
+            connection.execute(
+                dialect_insert(generations)
+                .values(
+                    owner=owner,
+                    request_id=rid,
+                    payload_hash=fingerprint,
+                    status="failed",
+                    error=failure,
+                    created=time.time(),
+                )
+                .on_conflict_do_nothing(index_elements=[generations.c.owner, generations.c.request_id])
+            )
+            connection.execute(
+                update(generations)
+                .where(
+                    generations.c.owner == owner,
+                    generations.c.request_id == rid,
+                    generations.c.payload_hash == fingerprint,
+                    generations.c.status == "pending",
+                )
+                .values(status="failed", error=failure)
+            )
+            prior = (
+                connection.execute(
+                    select(generations).where(generations.c.owner == owner, generations.c.request_id == rid)
+                )
+                .mappings()
+                .one()
+            )
+            if prior["payload_hash"] != fingerprint:
+                raise DomainError("IDEMPOTENCY_CONFLICT", "This request ID was used with different creation content.")
+            completed = (
+                connection.execute(select(games).where(games.c.owner == owner, games.c.create_id == rid))
+                .mappings()
+                .first()
+            )
+            if completed and completed["create_hash"] != fingerprint:
+                raise DomainError("IDEMPOTENCY_CONFLICT", "This request ID was used with different creation content.")
+            candidates = [completed["id"]] if completed else []
+            if request.previous_session_id is not None and str(request.previous_session_id) not in candidates:
+                candidates.append(str(request.previous_session_id))
+            for gid in candidates:
+                try:
+                    row, state = self._row(connection, gid, token)
+                except DomainError:
+                    # Never repair, migrate or publish an expired/corrupt/foreign save.
+                    continue
+                result = game_view(self.chapter, state, row["id"], row["revision"])
+                if completed and row["id"] == completed["id"]:
+                    result["idempotent_replay"] = True
+                else:
+                    result["notices"].append(
+                        "The new journey was not confirmed. Your previous valid save was restored; no generation was retried."
+                    )
+                break
+        if result is None:
+            raise error
+        return result
 
     def load(self, gid, token):
         with self.engine.connect() as connection:

@@ -5,6 +5,7 @@ namespace InfiniteStories
     // Versioned wire DTOs. Only server-confirmed snapshots are authoritative.
     [Serializable] public class Interest { public string name; public string category; public string entity_id; }
     [Serializable] public class NewGameRequest { public string request_id; public string mode; public Interest[] interests; }
+    [Serializable] public class GenerationRecoveryRequest { public NewGameRequest creation; public string previous_session_id; }
     [Serializable] public class Command { public string kind; public string target = ""; public string choice = ""; public float x; public float y; }
     [Serializable] public class ActionRequest { public string request_id; public int expected_revision; public Command command; }
     [Serializable] public class TurnRequest { public string request_id; public int expected_revision; public string text; }

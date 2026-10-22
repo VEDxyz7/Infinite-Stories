@@ -12,6 +12,7 @@ schema drift. Interactive documentation is available at the backend's `/docs`.
 | GET `/v1/chapter` | Original authored chapter |
 | POST `/v1/sessions` | Bearer-owned, request-ID-idempotent authored or cultural session creation |
 | GET `/v1/sessions/{id}` | Owned, unexpired confirmed snapshot |
+| POST `/v1/sessions/recover` | Provider-free reconciliation/cancellation of a cultural creation; recover completed or previous valid save |
 | POST `/v1/sessions/{id}/actions` | Validated command with expected revision and request ID |
 | POST `/v1/sessions/{id}/turns` | Optional configured Game Master action interpretation |
 | DELETE `/v1/sessions/{id}` | Revoke access; not immediate physical deletion |
@@ -53,6 +54,43 @@ failure and application budgets have distinct safe error codes. Failed provider
 work cannot overwrite confirmed world/quest state. Resume uses persisted context
 without refreshing the provider. Never publish raw responses or private captures
 without applicable redistribution rights.
+
+## Interrupted cultural creation recovery
+
+POST `/v1/sessions/recover` with the same guest bearer and
+`{creation: <original NewGame payload>, previous_session_id: <known UUID or null>}`.
+The original creation UUID/payload hash bind the operation; no additional recovery
+request ID is needed. Only cultural creations are accepted. This additive route
+is necessary because retrying the creation POST can call Qloo when no reservation
+exists; recovery must never do so. Existing routes/state versions are unchanged.
+
+Recovery is explicit reconciliation/cancellation, not a generation retry:
+
+1. If creation committed, return its latest valid owned snapshot, even when its
+   response was lost or the provider is now disabled. Prefer it over the old save.
+2. Otherwise make that creation ID terminal (`failed`/`QLOO_GENERATION_INTERRUPTED`),
+   including when the original POST never arrived. Return the specified previous
+   valid owned save if available. Do not alter its revision, quests or receipts.
+3. Without a valid recoverable save return409/`QLOO_GENERATION_INTERRUPTED`, after
+   durably recording cancellation. The client may clear that pending creation and
+   offer an explicit new game with a new ID. Network/5xx or payload-conflict errors
+   do not authorize dropping uncertain pending data.
+
+Creation's conditional `pending→complete` transition and initial save insertion
+share one transaction. Recovery serializes against that transaction: either the
+completed save wins, or cancellation wins and a late worker cannot publish it.
+A provider request already in flight may finish; recovery never sends another
+request, refunds a provider budget or treats partial output as game evidence.
+A late provider error cannot overwrite cancellation. Concurrent/repeated recovery
+and process restarts cannot recreate a run. No save migration or schema-table
+change is required. Invalid, expired or foreign saves are never repaired/exposed.
+
+Unity Resume/Retry reconcile pending cultural creation using this route. Reload
+uses it for a pending creation and canonical GET otherwise. A GET does **not**
+discard an uncertain action receipt; explicit Retry still resolves that same ID.
+Client refresh retains the original pending payload/ownership token. Only a valid
+server snapshot or terminal cancelled-creation response releases its creation
+pending flag. Client code never decides that cultural context is initialized.
 
 ## Game Master
 

@@ -116,7 +116,7 @@ namespace InfiniteStories
         }
         public void ServiceError(string code,string message,bool uncertain){
             BrowserAccessibility.Status(message);
-            status.text=code!=null&&code.StartsWith("MODEL_",StringComparison.Ordinal)?"The storyteller is unavailable. Your progress is safe. Try again shortly.":code!=null&&code.StartsWith("QLOO_",StringComparison.Ordinal)?"Cultural discoveries could not be reached. Your saved journey is safe.":message;
+            status.text=code=="QLOO_GENERATION_INTERRUPTED"?message:code!=null&&code.StartsWith("MODEL_",StringComparison.Ordinal)?"The storyteller is unavailable. Your progress is safe. Try again shortly.":code!=null&&code.StartsWith("QLOO_",StringComparison.Ordinal)?"Cultural discoveries could not be reached. Your saved journey is safe.":message;
             if(ActivePanel=="dialogue"&&dialogueFeedback!=null)dialogueFeedback.text=status.text;
             else if(ActivePanel=="scanner"&&scannerBodyText!=null){scannerBodyText.text+="\n"+status.text;ActivePanelText=scannerBodyText.text;}
             else if(TitleVisible)ShowErrorNotice(status.text);
