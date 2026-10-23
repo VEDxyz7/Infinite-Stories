@@ -7,6 +7,35 @@ namespace InfiniteStories.Tests
 {
     public sealed class PresentationTests
     {
+        [UnityTest] public IEnumerator ActualProceduralCampaignTasteCardsUseConfirmedSnapshots()
+        {
+            string directory=System.Environment.GetEnvironmentVariable("IS_PROCEDURAL_AGENT_PLAYTEST_DIRECTORY");
+            if(string.IsNullOrEmpty(directory))Assert.Ignore("Opt-in: requires the two actual local-agent ending snapshots.");
+            foreach(string category in new[]{"artist","movie"}){
+                string path=System.IO.Path.Combine(directory,category,"ending-view.json");
+                Assert.IsTrue(System.IO.File.Exists(path),"Actual campaign did not produce a completed ending: "+category);
+                var view=JsonUtility.FromJson<GameView>(System.IO.File.ReadAllText(path));
+                Assert.AreEqual("together",view.state.ending);Assert.AreEqual(4,view.state.visits);
+                Assert.IsNotNull(view.state.city_generation);
+                string confirmed=JsonUtility.ToJson(view.state);
+                var root=new GameObject("Actual agent Taste Card "+category);
+                var ui=root.AddComponent<GameUI>();ui.ReplayVerification=true;ui.Initialize();
+                ui.ShowGame(view);ui.ShowEnding(view);yield return null;
+                var labels=root.GetComponentsInChildren<UnityEngine.UI.Text>(true);
+                string text="";foreach(var label in labels)text+="\n"+label.text;
+                Assert.That(text,Does.Contain("TASTE CARD · YOUR NIGHT"));
+                Assert.That(text,Does.Contain("Gate opened"));Assert.That(text,Does.Contain("Letters protected"));
+                Assert.That(text,Does.Contain("Verified affinity"));Assert.That(text,Does.Contain("4 / 12 visits"));
+                foreach(var link in view.state.cultural_context.links){
+                    var target=System.Array.Find(link.recommendations,item=>item.entity_id==link.selected_id);
+                    Assert.That(text,Does.Contain("Saved Qloo connection: "+link.seed.name+" -> "+target.name));
+                }
+                Assert.That(text,Does.Contain("historical cultural responses, not live requests"));
+                Assert.That(text,Does.Contain("No individual personality profile or taste score was inferred"));
+                Assert.AreEqual(confirmed,JsonUtility.ToJson(view.state),"Displaying the reward must not mutate progress.");
+                Object.Destroy(root);yield return null;
+            }
+        }
         [UnityTest] public IEnumerator ContextDrawersReframeTheWorldAndRestoreTheSameConfirmedState()
         {
             var root=new GameObject("Player composition test");var ui=root.AddComponent<GameUI>();ui.Initialize();

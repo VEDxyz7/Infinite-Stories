@@ -66,7 +66,39 @@ def visit_next(client, headers, view):
 
 def choose(client, headers, view, target, choice):
     view = move(client, headers, view, 14, 9)
-    response = action(client, headers, view, {"kind": "choose", "target": target, "choice": choice})
+    from backend.app.culture import chapter_for_state
+    from backend.app.models import Command, GameState
+    from backend.app.understanding import required, witness
+
+    state = GameState.model_validate(view["state"])
+    obj = next(
+        o
+        for loc in chapter_for_state(client.app.state.store.chapter, state).locations
+        for o in loc.objects
+        if o.id == target
+    )
+    selected = next(c for c in obj.choices if c.id == choice)
+    if required(state, target, selected):
+        # Internal semantic double for deterministic campaign setup; no model
+        # turn budget. Dedicated owned /turns tests cover real routing/receipts.
+        from backend.app.models import ActionRequest
+
+        request = ActionRequest(
+            request_id=uuid4(),
+            expected_revision=view["revision"],
+            command=Command(kind="choose", target=target, choice=choice),
+        )
+        store = client.app.state.store
+        with store.engine.begin() as connection:
+            return store._apply(
+                connection,
+                view["session_id"],
+                headers["Authorization"].split(" ", 1)[1],
+                request,
+                understanding=witness(state, target, choice),
+            )
+    else:
+        response = action(client, headers, view, {"kind": "choose", "target": target, "choice": choice})
     assert response.status_code == 200, response.text
     return response.json()
 
@@ -308,9 +340,21 @@ def test_real_backup_restores_confirmed_progress_without_overwrite(setup, tmp_pa
 
 
 def test_visit_budget_has_an_authored_failure_conclusion(setup):
-    client, _, _ = setup
+    # Explicit legacy fixture: existing saves must retain the old travel economy.
+    from backend.app.store import digest
+
+    client, app, _ = setup
     response, headers, _ = start(client)
     view = response.json()
+    legacy = dict(view["state"])
+    for field in ("visit_rules", "encounter_id", "activation_validation"):
+        legacy.pop(field)
+    legacy["visits"] = 1
+    with app.state.store.engine.begin() as connection:
+        connection.execute(
+            update(games).where(games.c.id == view["session_id"]).values(state=legacy, state_hash=digest(legacy))
+        )
+    view = client.get("/v1/sessions/" + view["session_id"], headers=headers).json()
     for _ in range(11):
         view = visit_next(client, headers, view)
     assert view["state"]["visits"] == 12 and view["state"]["ending"] == ""
@@ -572,3 +616,18 @@ def test_model_failures_are_sanitized(mode):
             )
         )
     assert "TEST_ONLY_SECRET" not in error.value.message
+
+
+def goto_object(client, headers, view, target):
+    """Follow the actual saved chapter, not an assumed fixed clue venue."""
+    from backend.app.culture import chapter_for_state
+    from backend.app.models import GameState
+
+    chapter = chapter_for_state(client.app.state.store.chapter, GameState.model_validate(view["state"]))
+    owner = next(loc for loc in chapter.locations if any(o.id == target for o in loc.objects))
+    for _ in range(4):
+        if view["state"]["location_id"] == owner.id:
+            obj = next(o for o in owner.objects if o.id == target)
+            return move(client, headers, view, obj.x, obj.y)
+        view = visit_next(client, headers, view)
+    raise AssertionError("Generated object was not reachable through the saved city")

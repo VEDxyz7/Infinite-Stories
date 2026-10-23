@@ -85,6 +85,10 @@ def chapter_for_state(base, state):
                 choice.requires.extend(requirements)
     archive.description = "A chamber of cultural echoes, shaped by your selected interests and Qloo recommendations."
     decorate(chapter, state)
+    if state.city_generation is not None:
+        from .city_generation import apply_plan
+
+        apply_plan(chapter, state)
     validate_chapter(chapter)
     return dress_chapter(chapter, state)
 

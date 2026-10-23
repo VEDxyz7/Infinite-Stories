@@ -39,8 +39,14 @@ def response(action=None, narrative="The lanterns shimmer. Progress is unchanged
     }
 
 
-def plan_response(tool="propose_gameplay"):
-    return {"done": True, "done_reason": "stop", "message": {"content": json.dumps({"tool_id": tool})}}
+def plan_response(tool="propose_gameplay", intent="commit"):
+    plan = {"tool_id": tool}
+    if tool != "finish":
+        plan["intent"] = intent
+        plan["action_span"] = ""
+    else:
+        plan.update(request_satisfied=True, unanswered_request_span="")
+    return {"done": True, "done_reason": "stop", "message": {"content": json.dumps(plan)}}
 
 
 def is_plan(request):
@@ -244,7 +250,7 @@ def test_schema_only_contains_engine_eligible_actions():
     allowed = requests[-1]["format"]["properties"]["action_id"]["enum"]
     # Planning must precede the evidence decision in constrained decoding; the
     # actual-model regression selected a read before recognizing a commitment.
-    assert list(requests[-2]["format"]["properties"]) == ["tool_id"]
+    assert list(requests[-2]["format"]["properties"]) == ["intent", "tool_id", "action_span", "next_tool_id"]
     planning_context = json.loads(requests[-2]["messages"][1]["content"])["context"]
     assert planning_context["fictional_game_state"]["inventory_flags"] == state.flags
     assert planning_context["fictional_game_state"]["committed_quest_choices"] == state.choices
@@ -257,7 +263,9 @@ def test_schema_only_contains_engine_eligible_actions():
     assert state.flags == []  # Projected effects are not committed possessions.
     assert "choose:mara:take_map" in allowed and "none" in allowed
     assert not any(action.startswith("read_cultural_evidence:") for action in allowed)
-    assert "read_cultural_evidence:none" in requests[-2]["format"]["properties"]["tool_id"]["enum"]
+    assert set(
+        ("search_entities", "get_related_entities", "inspect_connection", "check_progress", "record_discovery")
+    ) <= set(requests[-2]["format"]["properties"]["tool_id"]["enum"])
     assert not any("position" in action for action in allowed)
     state.choices = ["take_map"]
     state.flags = ["map"]
@@ -336,8 +344,8 @@ def test_explicit_local_replay_factory(monkeypatch, tmp_path):
 
         from backend.app import local_game_master
 
-        assert diagnostic["protocol"] == "ollama-typed-tool-plan-v1"
-        assert diagnostic["planner_fields"] == ["tool_id"]
+        assert diagnostic["protocol"] == "ollama-understanding-v3"
+        assert diagnostic["planner_fields"] == ["intent", "tool_id", "action_span", "next_tool_id", "assessment_span"]
         assert (
             diagnostic["loaded_method_sha256"]["run"]
             == hashlib.sha256(marshal.dumps(local_game_master.OllamaGameMaster.run.__code__, 2)).hexdigest()
@@ -436,9 +444,12 @@ def test_cultural_fact_tool_is_authoritative_read_only_and_replayable(tmp_path, 
     def handler(request):
         calls.append(request)
         body = json.loads(request.content)
-        assert "read_cultural_evidence:0" in body["format"]["properties"]["tool_id"]["enum"]
+        if is_plan(request):
+            choices = body["format"]["properties"]["tool_id"]["enum"]
+            assert "inspect_connection" in choices or "finish" in choices
+            return httpx.Response(200, json=plan_response("finish" if "finish" in choices else "inspect_connection"))
         assert "action_id" not in body["format"]["properties"]
-        return httpx.Response(200, json=plan_response("read_cultural_evidence:0"))
+        return httpx.Response(200, json={"done": True, "done_reason": "stop", "message": {"content": "{}"}})
 
     gm = OllamaGameMaster(settings(), httpx.MockTransport(handler))
     import secrets
@@ -469,7 +480,7 @@ def test_cultural_fact_tool_is_authoritative_read_only_and_replayable(tmp_path, 
     with TestClient(create_app(cfg, game_master=gm, cultural_provider=provider)) as client:
         replay = client.post(url, headers=headers, json=body).json()
         assert replay["idempotent_replay"] and replay["narrative_source"] == "cultural_evidence_tool"
-        assert len(calls) == 1
+        assert len(calls) == 3  # Plan, typed arguments, observe; replay adds no inference.
 
 
 def test_raw_model_cannot_claim_provider_factual_attribution():
@@ -512,22 +523,30 @@ def test_read_tool_cannot_invent_target_or_combine_with_world_change(tool, actio
 def test_authored_evidence_abstains_instead_of_fabricating():
     from backend.app.models import CulturalEvidenceReply
 
-    body = plan_response("read_cultural_evidence:none")
-    gm = OllamaGameMaster(settings(), httpx.MockTransport(lambda r: httpx.Response(200, json=body)))
+    def handler(request):
+        if is_plan(request):
+            choices = json.loads(request.content)["format"]["properties"]["tool_id"]["enum"]
+            return httpx.Response(200, json=plan_response("finish" if "finish" in choices else "inspect_connection"))
+        return httpx.Response(200, json={"done": True, "done_reason": "stop", "message": {"content": "{}"}})
+
+    gm = OllamaGameMaster(settings(), httpx.MockTransport(handler))
     reply = asyncio.run(gm.run(make_chapter(), game_view(make_chapter(), GameState(), "test", 0, ""), "Read facts"))
     assert isinstance(reply, CulturalEvidenceReply) and reply.proposal is None
     assert "no Qloo cultural evidence" in reply.narrative
 
 
-@pytest.mark.parametrize("field", ["tool_id", "action_id", "narrative"])
+@pytest.mark.parametrize("field", ["intent", "tool_id", "action_span", "action_id", "narrative"])
 def test_required_planning_fields_cannot_be_omitted(field):
-    body = plan_response() if field == "tool_id" else response()
+    body = plan_response() if field in ("intent", "tool_id", "action_span") else response()
     proposal = json.loads(body["message"]["content"])
     del proposal[field]
     body["message"]["content"] = json.dumps(proposal)
 
     def handler(request):
-        return httpx.Response(200, json=plan_response() if field != "tool_id" and is_plan(request) else body)
+        return httpx.Response(
+            200,
+            json=plan_response() if field not in ("intent", "tool_id", "action_span") and is_plan(request) else body,
+        )
 
     gm = OllamaGameMaster(settings(), httpx.MockTransport(handler))
     with pytest.raises(DomainError) as exc:

@@ -91,6 +91,25 @@ def main():
                 if response.status_code != 200:
                     raise RuntimeError("Could not save recovery test journey")
                 expected = response.json()
+            # An actual procedural snapshot over explicitly captured Qloo data.
+            # Transport is MockTransport; no event key or live request is used.
+            from dataclasses import replace
+
+            from backend.tests.test_cultural_production import harness
+
+            cultural_config, provider, calls, interest, _ = harness(work / "captured-city", "brand")
+            cultural_config = replace(cultural_config, database_url=url)
+            with TestClient(create_app(cultural_config, cultural_provider=provider)) as client:
+                created = client.post(
+                    "/v1/sessions",
+                    headers=headers,
+                    json={"mode": "cultural", "request_id": str(uuid4()), "interests": [interest]},
+                )
+                if created.status_code != 200 or not created.json()["state"].get("city_generation"):
+                    raise RuntimeError("Could not prepare procedural recovery snapshot")
+                cultural_expected = created.json()
+            if len(calls) != 2:
+                raise RuntimeError("Captured transport operation count differs")
             run("pg_ctl", "-D", data, "-w", "stop")
             running = False
             run("pg_ctl", "-D", data, "-l", work / "server.log", "-w", "start")
@@ -105,6 +124,13 @@ def main():
                         or restored.json()["revision"] != 1
                     ):
                         raise RuntimeError("Recovered journey differs from confirmed snapshot")
+                    city = client.get("/v1/sessions/" + cultural_expected["session_id"], headers=headers)
+                    if (
+                        city.status_code != 200
+                        or city.json()["state"] != cultural_expected["state"]
+                        or city.json()["revision"] != cultural_expected["revision"]
+                    ):
+                        raise RuntimeError("Procedural seed/plan/proof snapshot changed on recovery")
 
             verify_snapshot(url)
             report["checks"].append("Confirmed snapshot and ownership survived actual PostgreSQL process restart")
@@ -116,6 +142,9 @@ def main():
             verify_snapshot(url.replace("/stories_test?", "/stories_restored?"))
             report["checks"].append(
                 "pg_dump/pg_restore into a separate empty database preserved snapshot, revision and ownership"
+            )
+            report["checks"].append(
+                "Captured-evidence procedural seed, plan, evidence and witness survived actual PostgreSQL restart and dump/restore without provider access"
             )
             report["postgres_version"] = run("postgres", "--version")
         finally:

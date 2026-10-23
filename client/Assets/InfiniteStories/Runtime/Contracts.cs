@@ -13,8 +13,25 @@ namespace InfiniteStories
     {
         public int schema_version; public string chapter_id; public int chapter_version; public string mode;
         public string location_id; public float x; public float y; public int visits;
+        public string visit_rules; public string encounter_id; public ActivationValidation activation_validation; public CityGeneration city_generation;
+        public UnderstandingRecord[] understanding_records;
         public string[] flags; public string[] choices; public string ending; public string[] history; public string cultural_source;
         public Interest[] interests; public CulturalContext cultural_context;
+    }
+    [Serializable] public class ActivationValidation { public string version; public int candidate; public string evidence_sha256, chapter_sha256, commands_sha256, generation_sha256, generated_chapter_sha256; public int steps, visits; public string ending; }
+    [Serializable] public class ResidentLinks { public int mara, ivo, sera; }
+    [Serializable] public class CulturalDistance
+    {
+        public string source_id, target_id, metadata_status, relationship, method;
+        public string[] comparable_domains, shared_tags;
+        public float contrast;
+        public float? ComparableContrast { get { return metadata_status=="comparable" ? (float?)contrast : null; } }
+    }
+    [Serializable] public class CityGeneration
+    {
+        public string version, seed; public int candidate, template;
+        public int[] proof_order; public string[] trace_locations, card_locations, shortcut;
+        public ResidentLinks resident_links; public CulturalDistance[] distances;
     }
     [Serializable] public class StoryChoice { public string id; public string label; public string text; public string[] requires; public string[] grants; public string ending; }
     [Serializable] public class WorldObject
@@ -43,6 +60,31 @@ namespace InfiniteStories
         public int schema_version; public string session_id; public int revision; public GameState state;
         public Location location; public WorldObject[] nearby; public Objective[] objectives;
         public string narrative; public string narrative_source; public string[] notices; public bool idempotent_replay;
+        public ToolObservation[] tool_results;
+    }
+    // Read-only server observations; these DTOs never grant client authority.
+    [Serializable] public class ToolObservation { public string tool_id; public ToolArguments arguments; public ToolResult result; }
+    [Serializable] public class ToolArguments { public string query,category,entity_id,source_id,target_id,claim,scope,action_id,requested_name,pair; }
+    [Serializable] public class ConfirmedCommitment { public string choice_id,label; public string[] confirmed_grants; }
+    [Serializable] public class ToolResult
+    {
+        public string status,scope,claim,limitations,original_story_interpretation,requested_scope,visit_rules,encounter_id,ending,history_limit,message;
+        public CulturalEntity[] entities; public CulturalEntity source,target; public CulturalEvidence[] provenance;
+        public Objective[] objectives; public string[] discoveries,unrecognized_choice_ids,proposed_grants;
+        public ConfirmedCommitment[] commitments; public int visits_spent,visits_remaining; public Command command;
+    }
+    // Read-only server-confirmed assessments; never sent in a Command.
+    [Serializable] public class UnderstandingAssessment
+    {
+        public bool attempt,addresses_affinity,respects_limits,separates_fiction,explicit_choice;
+        public string choice_id,status,source_id,target_id,connection_quote,limitation_quote,interpretation_quote,commitment_quote;
+        public int link_index;
+    }
+    [Serializable] public class UnderstandingReview { public string connection_meaning,limitation_meaning,fiction_meaning,choice_meaning; }
+    [Serializable] public class UnderstandingRecord
+    {
+        public string resident,choice_id,evidence_sha256,explanation;
+        public UnderstandingAssessment assessment; public UnderstandingReview review;
     }
     [Serializable] public class CulturalTag { public string id, name, type; }
     [Serializable] public class CulturalEvidence { public string origin, path, retrieved_at, body_sha256; public int elapsed_ms; }

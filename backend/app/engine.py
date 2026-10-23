@@ -6,7 +6,25 @@ from .investigation import enabled
 from .models import Chapter, Command, DomainError, GameState, GameView
 
 
-def apply_command(chapter: Chapter, original: GameState, command: Command) -> tuple[GameState, str]:
+def dawn(state):
+    state.ending = "dawn"
+    state.encounter_id = ""
+    return "Dawn closes the gate. Your discoveries remain in your Taste Card."
+
+
+def encounter(state, target):
+    if state.visit_rules != "conversation-v1" or state.encounter_id == target:
+        return ""
+    if state.visits >= 12:
+        return dawn(state)
+    state.visits += 1
+    state.encounter_id = target
+    return ""
+
+
+def apply_command(
+    chapter: Chapter, original: GameState, command: Command, *, understanding=None
+) -> tuple[GameState, str]:
     chapter = chapter_for_state(chapter, original)
     state = original.model_copy(deep=True)
     if state.ending:
@@ -23,6 +41,14 @@ def apply_command(chapter: Chapter, original: GameState, command: Command) -> tu
         ):
             raise DomainError("BLOCKED_PATH", "That path crosses solid terrain.")
         state.x, state.y = command.x, command.y
+        if state.visit_rules == "conversation-v1" and state.encounter_id:
+            resident = next((o for o in loc.objects if o.id == state.encounter_id), None)
+            if resident is None or math.hypot(state.x - resident.x, state.y - resident.y) > 3:
+                state.encounter_id = ""
+                if state.visits == 12:
+                    message = dawn(state)
+                    state.history = (state.history + [message])[-50:]
+                    return state, message
         return state, "Position saved."
     obj = next((obj for obj in loc.objects if obj.id == command.target), None)
     if obj is None:
@@ -30,17 +56,21 @@ def apply_command(chapter: Chapter, original: GameState, command: Command) -> tu
     if math.hypot(state.x - obj.x, state.y - obj.y) > 2.0:
         raise DomainError("OUT_OF_REACH", "Move closer to interact.")
     if command.kind in ("interact", "inspect"):
-        narrative = obj.text
+        narrative = encounter(state, obj.id) if obj.kind in ("npc", "gate") else ""
+        narrative = narrative or obj.text
     elif command.kind == "travel":
         if obj.kind != "portal":
             raise DomainError("INVALID_PORTAL", "That object is not an exit.")
         if state.visits >= 12:
+            state.encounter_id = ""
             state.ending = "dawn"
             narrative = "Dawn reaches the city before you reach the tram. You will keep these unfinished stories until another night."
         else:
             state.location_id = obj.destination
             state.x, state.y = (3, 8) if obj.id.endswith("_east") else (28, 8)
-            state.visits += 1
+            if state.visit_rules == "travel-v1":
+                state.visits += 1
+            state.encounter_id = ""
             narrative = next(loc.description for loc in chapter.locations if loc.id == obj.destination)
     elif command.kind == "choose":
         if (
@@ -59,6 +89,17 @@ def apply_command(chapter: Chapter, original: GameState, command: Command) -> tu
             raise DomainError("ALREADY_CHOSEN", "That choice has already been made.")
         if obj.id == "sera" and "chronicle" in state.flags:
             raise DomainError("CHOICE_COMMITTED", "The keeper already entrusted you with the chronicle.")
+        from .understanding import required, validate
+
+        if required(state, obj.id, choice):
+            record = validate(state, obj.id, choice.id, understanding)
+            state.understanding_records.append(record)
+        if obj.kind in ("npc", "gate"):
+            expired = encounter(state, obj.id)
+            if expired:
+                state.understanding_records = list(original.understanding_records)
+                state.history = (state.history + [expired])[-50:]
+                return state, expired
         state.flags = sorted(set(state.flags) | set(choice.grants))
         state.choices.append(choice.id)
         state.ending = choice.ending

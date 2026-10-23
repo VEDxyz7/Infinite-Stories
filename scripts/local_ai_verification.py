@@ -58,16 +58,16 @@ def create_local_ai_app():
     # Snapshot actual loaded code at startup; never infer loaded code from a
     # later disk read. This route exists only in the opted-in local factory.
     adapter = {
-        "protocol": "ollama-typed-tool-plan-v1",
+        "protocol": "ollama-understanding-v3",
         "pid": os.getpid(),
         "source_sha256_at_startup": hashlib.sha256(Path(local_game_master.__file__).read_bytes()).hexdigest(),
         # Marshal v3+ reference flags depend on live object refcounts. v2 avoids
         # a diagnostic changing merely because an async frame starts/stops.
         "loaded_method_sha256": {
             name: hashlib.sha256(marshal.dumps(getattr(OllamaGameMaster, name).__code__, 2)).hexdigest()
-            for name in ("run", "_query", "_propose")
+            for name in ("run", "_query", "_propose", "_assess_understanding")
         },
-        "planner_fields": list(local_game_master.ToolPlan.model_fields),
+        "planner_fields": list(local_game_master.IntentPlan.model_fields),
         "model": config.llm_model,
         "verification_mode": "captured_response_replay",
         "inference_mode": "local_loopback",

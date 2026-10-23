@@ -11,6 +11,7 @@ from backend.app.culture import chapter_for_state
 from backend.app.engine import apply_command, game_view
 from backend.app.main import create_app
 from backend.app.models import Command, DomainError, GameState
+from backend.app.understanding import witness
 from backend.tests.test_cultural_production import harness
 from backend.tests.test_service import action, choose, move
 
@@ -33,6 +34,7 @@ def saved(tmp_path):
 def test_legacy_context_keeps_geometry_prerequisites_and_no_new_proofs(saved):
     _, _, view = saved
     state = GameState.model_validate(view["state"])
+    state.city_generation = None  # Explicitly construct a legacy save without a procedural plan.
     state.cultural_context.rule_version = "cultural-cards-v1"
     base = make_chapter()
     snapshot = base.model_dump()
@@ -48,6 +50,7 @@ def test_legacy_context_keeps_geometry_prerequisites_and_no_new_proofs(saved):
 def test_five_link_campaign_is_reachable_and_all_proofs_required(saved):
     _, _, view = saved
     state = GameState.model_validate(view["state"])
+    state.city_generation = None  # Legacy v3 layout stress; procedural five-link coverage is separate.
     # Repeat an actual captured link solely to stress the maximum campaign size.
     # This is not a claim that the provider accepts duplicate interests.
     link = state.cultural_context.links[0]
@@ -62,7 +65,12 @@ def test_five_link_campaign_is_reachable_and_all_proofs_required(saved):
         state.x, state.y = note.x, note.y
         state, _ = apply_command(base, state, Command(kind="choose", target=note.id, choice=note.choices[0].id))
     state.x, state.y = 14, 9
-    state, _ = apply_command(base, state, Command(kind="choose", target="ivo", choice="learn_rhythm"))
+    state, _ = apply_command(
+        base,
+        state,
+        Command(kind="choose", target="ivo", choice="learn_rhythm"),
+        understanding=witness(state, "ivo", "learn_rhythm"),
+    )
     state.location_id = "archive"
     for i in range(5):
         card = next(
@@ -71,7 +79,12 @@ def test_five_link_campaign_is_reachable_and_all_proofs_required(saved):
         state.x, state.y = card.x, card.y
         state, _ = apply_command(base, state, Command(kind="choose", target=card.id, choice=card.choices[0].id))
     state.x, state.y = 14, 9
-    state, _ = apply_command(base, state, Command(kind="choose", target="sera", choice="promise_guard"))
+    state, _ = apply_command(
+        base,
+        state,
+        Command(kind="choose", target="sera", choice="promise_guard"),
+        understanding=witness(state, "sera", "promise_guard"),
+    )
     state.location_id = "station"
     for i in range(5):
         with pytest.raises(DomainError) as blocked:
@@ -81,10 +94,15 @@ def test_five_link_campaign_is_reachable_and_all_proofs_required(saved):
         choices = next(o["choices"] for o in visible if o["id"] == "beacon")
         assert len(choices) == 2
         proof = next(c for c in choices if c["id"].startswith(f"prove_{i}_"))
-        state, _ = apply_command(base, state, Command(kind="choose", target="beacon", choice=proof["id"]))
+        state, _ = apply_command(
+            base,
+            state,
+            Command(kind="choose", target="beacon", choice=proof["id"]),
+            understanding=witness(state, "beacon", proof["id"]),
+        )
     state, _ = apply_command(base, state, Command(kind="choose", target="beacon", choice="leave_keeper"))
     assert state.ending == "keeper"
-    assert state.visits == 1  # This unit test relocates state; no travel was applied.
+    assert state.visits == 3  # Direct choices enter Ivo, Sera and the Curator; setup injected the map.
     assert all(f"proof_{i}" in state.flags and f"trace_{i}" in state.flags for i in range(5))
 
 
@@ -96,7 +114,9 @@ def test_false_claims_and_early_rhythm_leave_saved_state_unchanged(saved):
     view = move(client, headers, visit_next(client, headers, view), 14, 9)
     early = action(client, headers, view, {"kind": "choose", "target": "ivo", "choice": "learn_rhythm"})
     assert early.status_code == 409 and early.json()["error"]["code"] == "PREREQUISITE_MISSING"
-    view = move(client, headers, view, 12, 6)
+    from backend.tests.test_service import goto_object
+
+    view = goto_object(client, headers, view, "screening_note_0")
     before = view["state"]
     false = action(
         client, headers, view, {"kind": "choose", "target": "screening_note_0", "choice": "hypothesis_screen_0"}
@@ -122,7 +142,6 @@ def test_empty_provider_result_cannot_replace_investigation_progress_and_restart
     import httpx
 
     from backend.tests.test_cultural_production import captured, envelope
-    from backend.tests.test_service import visit_next
 
     _, search, recs, _ = captured("artist")
     failed = False
@@ -139,7 +158,9 @@ def test_empty_provider_result_cannot_replace_investigation_progress_and_restart
         result = client.post("/v1/sessions", headers=headers, json=body)
         assert result.status_code == 200
         view = choose(client, headers, result.json(), "mara", "take_map")
-        view = move(client, headers, visit_next(client, headers, view), 12, 6)
+        from backend.tests.test_service import goto_object
+
+        view = goto_object(client, headers, view, "screening_note_0")
         note = next(o for o in view["nearby"] if o["id"] == "screening_note_0")
         traced = action(
             client, headers, view, {"kind": "choose", "target": note["id"], "choice": note["choices"][0]["id"]}

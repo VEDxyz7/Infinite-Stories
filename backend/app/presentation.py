@@ -22,8 +22,45 @@ VENUES = {
 
 def resident_text(object_id, state):
     flags = set(state.flags)
-    investigation = (
-        state.cultural_context is not None and state.cultural_context.rule_version == "cultural-investigation-v2"
+    if state.city_generation and object_id in ("mara", "ivo", "sera"):
+        index = state.city_generation.resident_links[object_id]
+        link = state.cultural_context.links[index]
+        selected = next(e for e in link.recommendations if e.entity_id == link.selected_id)
+        voice = {
+            "mara": "Mara turns a record sleeve toward the lamp. 'A route is something we earn by listening.'",
+            "ivo": "Ivo stops the projector. 'A useful rhythm separates evidence from a convincing story.'",
+            "sera": "Sera holds a sealed letter. 'Understanding is not ownership. Your promise must be yours.'",
+        }[object_id]
+        missing = {
+            "mara": [],
+            "ivo": ["map", *[f"trace_{i}" for i in state.city_generation.proof_order]],
+            "sera": ["rhythm", *[f"culture_{i}" for i in state.city_generation.proof_order]],
+        }[object_id]
+        missing = [flag for flag in missing if flag not in flags]
+        labels = {"map": "Mara's map", "rhythm": "Ivo's rhythm"}
+        for i, evidence in enumerate(state.cultural_context.links):
+            labels[f"trace_{i}"] = f"the screening note for {evidence.seed.name}"
+            labels[f"culture_{i}"] = f"the memory card for {evidence.seed.name}"
+        measure = state.city_generation.distances[index]
+        contrast = (
+            "Comparable tags are missing, so we cannot call this a distant cultural match."
+            if measure.contrast is None
+            else f"Our tag-contrast estimate is {measure.contrast:.2f}; it is an application heuristic, not a Qloo score or a fact about your personality."
+        )
+        return (
+            voice
+            + f" Our saved thread is {link.seed.name} → {selected.name}. "
+            + (
+                "First obtain: " + ", ".join(labels[flag] for flag in missing) + "."
+                if missing
+                else "Explain what this saved affinity supports and what it cannot establish."
+            )
+            + " "
+            + contrast
+        )
+    investigation = state.cultural_context is not None and state.cultural_context.rule_version in (
+        "cultural-investigation-v2",
+        "cultural-understanding-v3",
     )
     if object_id == "mara":
         if investigation and "map" not in flags:
@@ -88,4 +125,41 @@ def dress_chapter(chapter, state):
             text = resident_text(obj.id, state)
             if text is not None:
                 obj.text = text
+                from .understanding import enabled, topic
+
+                if enabled(state) and obj.id in ("mara", "ivo", "sera", "beacon"):
+                    evidence = topic(state, obj.id)
+                    obj.text += (
+                        f" Explain the saved connection from {evidence['source']['name']} to {evidence['target']['name']}: "
+                        "it is aggregate affinity, not proof of collaboration or individual personality. "
+                        "Use your own words; the Scanner holds the evidence."
+                    )
+                    if obj.id == "sera":
+                        obj.text += " Explain why our story setting is creative interpretation, then choose a promise."
+
+    if state.city_generation:
+        for location in chapter.locations:
+            relevant = [o.name for o in location.objects if o.id.startswith(("screening_note_", "cultural_echo_"))]
+            location.description += (
+                " This city's evidence stops: " + (", ".join(relevant) or "resident and onward route") + "."
+            )
+            for obj in location.objects:
+                if obj.id in ("mara", "ivo", "sera"):
+                    notes = [
+                        loc.name
+                        for loc in chapter.locations
+                        if any(o.id.startswith("screening_note_") for o in loc.objects)
+                    ]
+                    cards = [
+                        loc.name
+                        for loc in chapter.locations
+                        if any(o.id.startswith("cultural_echo_") for o in loc.objects)
+                    ]
+                    obj.text += (
+                        " In this generated city, screening notes are at "
+                        + ", ".join(notes)
+                        + "; memory cards are at "
+                        + ", ".join(cards)
+                        + ". Follow their recorded prerequisites."
+                    )
     return chapter

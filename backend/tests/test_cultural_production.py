@@ -23,7 +23,7 @@ from backend.app.main import create_app
 from backend.app.models import DomainError, Interest
 from backend.app.providers import CulturalProvider
 from backend.app.store import games, generations, qloo_budget
-from backend.tests.test_service import action, choose, move, start, visit_next
+from backend.tests.test_service import action, choose, move, start
 
 ROOT = Path(__file__).resolve().parents[2]
 PAIRS = {
@@ -157,8 +157,10 @@ def test_real_adapter_creates_required_cultural_quest_and_persists_across_restar
         replay = client.post("/v1/sessions", headers=headers, json=body)
         assert replay.status_code == 200 and replay.json()["session_id"] == view["session_id"] and len(calls) == 2
         view = choose(client, headers, view, "mara", "take_map")
-        view = visit_next(client, headers, view)
-        assert context["rule_version"] == "cultural-investigation-v2"
+        from backend.tests.test_service import goto_object
+
+        view = goto_object(client, headers, view, "screening_note_0")
+        assert context["rule_version"] == "cultural-understanding-v3"
         note = next(o for o in view["location"]["objects"] if o["id"] == "screening_note_0")
         view = move(client, headers, view, note["x"], note["y"])
         traced = action(
@@ -167,10 +169,12 @@ def test_real_adapter_creates_required_cultural_quest_and_persists_across_restar
         assert traced.status_code == 200, traced.text
         view = traced.json()
         assert "trace_0" in view["state"]["flags"]
+        view = goto_object(client, headers, view, "ivo")
         view = choose(client, headers, view, "ivo", "learn_rhythm")
-        view = move(client, headers, visit_next(client, headers, view), 14, 9)
+        view = goto_object(client, headers, view, "sera")
         blocked = action(client, headers, view, {"kind": "choose", "target": "sera", "choice": "promise_guard"})
         assert blocked.status_code == 409
+        view = goto_object(client, headers, view, "cultural_echo_0")
         card = next(o for o in view["location"]["objects"] if o["id"] == "cultural_echo_0")
         view = move(client, headers, view, card["x"], card["y"])
         bad = action(client, headers, view, {"kind": "choose", "target": card["id"], "choice": "fabricated"})
@@ -179,8 +183,9 @@ def test_real_adapter_creates_required_cultural_quest_and_persists_across_restar
             client, headers, view, {"kind": "choose", "target": card["id"], "choice": card["choices"][0]["id"]}
         )
         assert good.status_code == 200, good.text
-        view = choose(client, headers, good.json(), "sera", "promise_guard")
-        view = visit_next(client, headers, view)
+        view = goto_object(client, headers, good.json(), "sera")
+        view = choose(client, headers, view, "sera", "promise_guard")
+        view = goto_object(client, headers, view, "beacon")
         proof = next(
             c
             for o in view["location"]["objects"]

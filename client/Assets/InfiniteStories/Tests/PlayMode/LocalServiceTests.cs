@@ -105,6 +105,17 @@ namespace InfiniteStories.Tests
                     ui.ShowPause();
                     yield return Route(api,confirmed,14,9,v=>confirmed=v);
                     yield return Reload(controller,ui,world,new Vector2(14,9));
+                    controller.OnBrowserCommand("interact");
+                    yield return Settle(controller);
+                    yield return Read(api,session,v=>confirmed=v);
+                    Assert.AreEqual(stage+1,confirmed.state.visits,"Opening each resident/Curator encounter spends exactly one visit.");
+                    Assert.AreEqual(residents[stage],confirmed.state.encounter_id);
+                    ui.CloseDialogue();
+                    controller.OnBrowserCommand("interact");
+                    yield return Settle(controller);
+                    yield return Read(api,session,v=>confirmed=v);
+                    Assert.AreEqual(stage+1,confirmed.state.visits,"Reopening an ongoing encounter is free.");
+                    ui.CloseDialogue();
                     controller.OnBrowserCommand("choose:"+residents[stage]+":"+choices[stage]);
                     yield return Settle(controller);
                     yield return Read(api,session,v=>confirmed=v);
@@ -117,7 +128,7 @@ namespace InfiniteStories.Tests
                     controller.OnBrowserCommand("travel:"+confirmed.state.location_id+"_east");
                     yield return Settle(controller);
                     yield return Read(api,session,v=>confirmed=v);
-                    Assert.AreEqual(stage+2,confirmed.state.visits);
+                    Assert.AreEqual(stage+1,confirmed.state.visits,"Portal travel is free under conversation-v1.");
                     Assert.AreEqual(confirmed.state.location_id,world.LocationId);
                 }
                 Assert.AreEqual("together",confirmed.state.ending);

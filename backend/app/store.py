@@ -31,6 +31,7 @@ from .content import current_location
 from .culture import chapter_for_state
 from .engine import apply_command, game_view
 from .models import DomainError, GameState
+from .solvability import activate_candidate, fingerprint, initial_chapter_fingerprint
 
 metadata = MetaData()
 migrations = Table("schema_migrations", metadata, Column("version", Integer, primary_key=True))
@@ -147,6 +148,23 @@ class Store:
             state = GameState.model_validate(row["state"])
         except ValidationError:
             raise DomainError("SAVE_INVALID", "This save version cannot be safely resumed.", 503) from None
+        if state.visit_rules == "conversation-v1":
+            validation = state.activation_validation
+            evidence = state.cultural_context.model_dump(mode="json") if state.cultural_context else None
+            if (
+                validation is None
+                or validation.evidence_sha256 != fingerprint(evidence)
+                or validation.chapter_sha256 != fingerprint(self.chapter.model_dump(mode="json"))
+                or validation.generated_chapter_sha256
+                != (initial_chapter_fingerprint(self.chapter, state) if state.city_generation else None)
+                or validation.generation_sha256
+                != (fingerprint(state.city_generation.model_dump(mode="json")) if state.city_generation else None)
+            ):
+                raise DomainError(
+                    "SAVE_INVALID",
+                    "The saved city has no matching solution validation. It has not been overwritten.",
+                    503,
+                )
         current_location(chapter_for_state(self.chapter, state), state)
         return row, state
 
@@ -229,9 +247,14 @@ class Store:
                 context = self.cultural_provider.generate(request.interests)
                 # Validate all generated content before opening the save transaction.
                 state = GameState(
-                    mode="cultural", interests=request.interests, cultural_source="qloo", cultural_context=context
+                    mode="cultural",
+                    interests=request.interests,
+                    cultural_source="qloo",
+                    cultural_context=context,
+                    visit_rules="conversation-v1",
+                    visits=0,
                 )
-                chapter_for_state(self.chapter, state)
+                state = activate_candidate(self.chapter, state)
             except Exception as error:
                 safe = (
                     error
@@ -260,7 +283,9 @@ class Store:
                     )
                 raise safe from None
         else:
-            state = GameState(interests=request.interests)
+            state = activate_candidate(
+                self.chapter, GameState(interests=request.interests, visit_rules="conversation-v1", visits=0)
+            )
         data = state.model_dump(mode="json")
         gid = str(uuid4())
         try:
@@ -386,7 +411,7 @@ class Store:
             row, state = self._row(connection, gid, token)
             return game_view(self.chapter, state, gid, row["revision"])
 
-    def _apply(self, connection, gid, token, request):
+    def _apply(self, connection, gid, token, request, *, understanding=None):
         row, state = self._row(connection, gid, token)
         fingerprint = digest(request.model_dump(mode="json"))
         previous = (
@@ -399,6 +424,9 @@ class Store:
         if previous:
             if previous["payload_hash"] != fingerprint:
                 raise DomainError("IDEMPOTENCY_CONFLICT", "This request ID was already used with different content.")
+            # A concurrent writer may have committed between our initial state
+            # read and receipt lookup. Never pair a new receipt with old state.
+            row, state = self._row(connection, gid, token)
             # Keep receipts compact: ordinary position saves must not duplicate
             # the whole chapter/map in SQL. Replays return latest confirmed
             # progress, never an old snapshot that could roll a client back.
@@ -414,7 +442,7 @@ class Store:
             raise DomainError(
                 "STALE_REVISION", "Progress changed in another request. Reload the confirmed save before trying again."
             )
-        changed, narrative = apply_command(self.chapter, state, request.command)
+        changed, narrative = apply_command(self.chapter, state, request.command, understanding=understanding)
         data = changed.model_dump(mode="json")
         revision = row["revision"] + 1
         result = connection.execute(
@@ -480,7 +508,7 @@ class Store:
                 if budget.rowcount != 1:
                     raise DomainError(
                         "MODEL_DAILY_BUDGET",
-                        "The service's daily free-form action budget is exhausted. Predefined choices remain available.",
+                        "The service's daily Game Master budget is exhausted. Progress is safe; saved evidence and ungated actions remain available. Cultural explanations can continue after the budget resets.",
                         429,
                     )
                 changed = connection.execute(
@@ -491,7 +519,7 @@ class Store:
                 if changed.rowcount != 1:
                     raise DomainError(
                         "MODEL_BUDGET_EXHAUSTED",
-                        "This journey has reached its free-form turn budget. The predefined choices remain available.",
+                        "This journey has reached its Game Master turn budget. Progress is safe; saved evidence and ungated actions remain available. Cultural clues cannot bypass understanding checks.",
                         429,
                     )
                 connection.execute(
@@ -524,12 +552,27 @@ class Store:
                 "TURN_PENDING", "A duplicate turn is already pending; no second model call was started."
             ) from None
 
-    def finish_turn(self, gid, token, turn_request, proposal, narrative, narrative_source=None):
+    def finish_turn(
+        self,
+        gid,
+        token,
+        turn_request,
+        proposal,
+        narrative,
+        narrative_source=None,
+        tool_results=None,
+        understanding=None,
+    ):
         from .models import ActionRequest
 
-        if narrative_source is not None and (narrative_source != "cultural_evidence_tool" or proposal is not None):
+        if narrative_source is not None and (
+            narrative_source not in ("cultural_evidence_tool", "confirmed_state_tool") or proposal is not None
+        ):
             raise DomainError("MODEL_OUTPUT_INVALID", "A read-only evidence reply cannot change progress.", 503)
 
+        if understanding is not None and understanding.get("text") != turn_request.text:
+            raise DomainError("UNDERSTANDING_UNCONFIRMED", "The assessment does not describe your actual explanation.")
+        encounter_applied = False
         with self.engine.begin() as connection:
             if proposal is not None:
                 action = ActionRequest(
@@ -537,7 +580,17 @@ class Store:
                     expected_revision=turn_request.expected_revision,
                     command=proposal,
                 )
-                response = self._apply(connection, gid, token, action)
+                from .local_game_master import unresolved_target_names
+
+                row, state = self._row(connection, gid, token)
+                if proposal.kind == "choose" and unresolved_target_names(
+                    turn_request.text, state, game_view(self.chapter, state, gid, row["revision"])
+                ):
+                    raise DomainError(
+                        "MODEL_TARGET_UNCONFIRMED",
+                        "An unverified name needs clarification. No work was substituted; saved progress is unchanged.",
+                    )
+                response = self._apply(connection, gid, token, action, understanding=understanding)
                 # State-changing narration is always the authoritative engine's text.
             else:
                 row, state = self._row(connection, gid, token)
@@ -546,10 +599,34 @@ class Store:
                         "STALE_REVISION",
                         "Progress changed while the Game Master was thinking. Your progress is intact.",
                     )
-                response = game_view(self.chapter, state, gid, row["revision"], narrative)
+                if state.visit_rules == "conversation-v1" and narrative_source is None:
+                    nearby = game_view(self.chapter, state, gid, row["revision"])["nearby"]
+                    resident = next((o for o in nearby if o["kind"] in ("npc", "gate")), None)
+                    if resident:
+                        action = ActionRequest(
+                            request_id=turn_request.request_id,
+                            expected_revision=turn_request.expected_revision,
+                            command={"kind": "interact", "target": resident["id"]},
+                        )
+                        response = self._apply(connection, gid, token, action)
+                        encounter_applied = True
+                        if not response["state"]["ending"]:
+                            response["narrative"] = narrative
+                    else:
+                        response = game_view(self.chapter, state, gid, row["revision"], narrative)
+                else:
+                    response = game_view(self.chapter, state, gid, row["revision"], narrative)
             response["narrative_source"] = narrative_source or (
-                "game_master_validated" if proposal is not None else "game_master_no_state_change"
+                "game_master_validated" if proposal is not None or encounter_applied else "game_master_no_state_change"
             )
+            response["tool_results"] = [o.model_dump(mode="json") for o in (tool_results or [])]
+            # A tool's preview is not a confirmed discovery until _apply succeeds.
+            for observation in response["tool_results"]:
+                if observation["tool_id"] == "record_discovery" and proposal is not None:
+                    observation["result"]["status"] = "committed"
+                    observation["result"]["message"] = (
+                        "Confirmed by the authoritative engine and saved under this turn receipt."
+                    )
             connection.execute(
                 update(turns)
                 .where(turns.c.game_id == gid, turns.c.request_id == str(turn_request.request_id))

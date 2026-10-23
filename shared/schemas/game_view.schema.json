@@ -1,5 +1,94 @@
 {
   "$defs": {
+    "ActivationValidation": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": "engine-witness-v1",
+          "title": "Version",
+          "type": "string"
+        },
+        "candidate": {
+          "maximum": 2,
+          "minimum": 0,
+          "title": "Candidate",
+          "type": "integer"
+        },
+        "evidence_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Evidence Sha256",
+          "type": "string"
+        },
+        "chapter_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Chapter Sha256",
+          "type": "string"
+        },
+        "generation_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generation Sha256"
+        },
+        "generated_chapter_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Generated Chapter Sha256"
+        },
+        "commands_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Commands Sha256",
+          "type": "string"
+        },
+        "steps": {
+          "maximum": 100000,
+          "minimum": 1,
+          "title": "Steps",
+          "type": "integer"
+        },
+        "visits": {
+          "maximum": 12,
+          "minimum": 1,
+          "title": "Visits",
+          "type": "integer"
+        },
+        "ending": {
+          "enum": [
+            "together",
+            "keeper"
+          ],
+          "title": "Ending",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "candidate",
+        "evidence_sha256",
+        "chapter_sha256",
+        "commands_sha256",
+        "steps",
+        "visits",
+        "ending"
+      ],
+      "title": "ActivationValidation",
+      "type": "object"
+    },
     "Choice": {
       "additionalProperties": false,
       "properties": {
@@ -43,6 +132,113 @@
       "title": "Choice",
       "type": "object"
     },
+    "CityGeneration": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": "saved-cultural-city-v1",
+          "default": "saved-cultural-city-v1",
+          "title": "Version",
+          "type": "string"
+        },
+        "seed": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Seed",
+          "type": "string"
+        },
+        "candidate": {
+          "maximum": 2,
+          "minimum": 0,
+          "title": "Candidate",
+          "type": "integer"
+        },
+        "template": {
+          "maximum": 2,
+          "minimum": 0,
+          "title": "Template",
+          "type": "integer"
+        },
+        "proof_order": {
+          "items": {
+            "type": "integer"
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "title": "Proof Order",
+          "type": "array"
+        },
+        "trace_locations": {
+          "items": {
+            "enum": [
+              "quay",
+              "market",
+              "archive"
+            ],
+            "type": "string"
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "title": "Trace Locations",
+          "type": "array"
+        },
+        "card_locations": {
+          "items": {
+            "enum": [
+              "quay",
+              "market",
+              "archive"
+            ],
+            "type": "string"
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "title": "Card Locations",
+          "type": "array"
+        },
+        "resident_links": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Resident Links",
+          "type": "object"
+        },
+        "distances": {
+          "items": {
+            "$ref": "#/$defs/CulturalDistance"
+          },
+          "maxItems": 5,
+          "minItems": 1,
+          "title": "Distances",
+          "type": "array"
+        },
+        "shortcut": {
+          "items": {
+            "enum": [
+              "quay",
+              "market",
+              "archive",
+              "station"
+            ],
+            "type": "string"
+          },
+          "maxItems": 2,
+          "title": "Shortcut",
+          "type": "array"
+        }
+      },
+      "required": [
+        "seed",
+        "candidate",
+        "template",
+        "proof_order",
+        "trace_locations",
+        "card_locations",
+        "resident_links",
+        "distances"
+      ],
+      "title": "CityGeneration",
+      "type": "object"
+    },
     "CulturalContext": {
       "additionalProperties": false,
       "properties": {
@@ -62,7 +258,8 @@
           "default": "cultural-cards-v1",
           "enum": [
             "cultural-cards-v1",
-            "cultural-investigation-v2"
+            "cultural-investigation-v2",
+            "cultural-understanding-v3"
           ],
           "title": "Rule Version",
           "type": "string"
@@ -81,6 +278,91 @@
         "links"
       ],
       "title": "CulturalContext",
+      "type": "object"
+    },
+    "CulturalDistance": {
+      "additionalProperties": false,
+      "properties": {
+        "source_id": {
+          "format": "uuid",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "target_id": {
+          "format": "uuid",
+          "title": "Target Id",
+          "type": "string"
+        },
+        "contrast": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Contrast"
+        },
+        "metadata_status": {
+          "enum": [
+            "comparable",
+            "unknown"
+          ],
+          "title": "Metadata Status",
+          "type": "string"
+        },
+        "comparable_domains": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Comparable Domains",
+          "type": "array"
+        },
+        "shared_tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Shared Tags",
+          "type": "array"
+        },
+        "relationship": {
+          "default": "not_evaluated",
+          "enum": [
+            "direct_saved_recommendation",
+            "not_evaluated"
+          ],
+          "title": "Relationship",
+          "type": "string"
+        },
+        "paths": {
+          "items": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "maxItems": 6,
+          "title": "Paths",
+          "type": "array"
+        },
+        "method": {
+          "const": "application-tag-jaccard-v1",
+          "default": "application-tag-jaccard-v1",
+          "title": "Method",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "target_id",
+        "metadata_status"
+      ],
+      "title": "CulturalDistance",
       "type": "object"
     },
     "CulturalEntity": {
@@ -326,12 +608,48 @@
           "title": "Y",
           "type": "number"
         },
+        "visit_rules": {
+          "default": "travel-v1",
+          "enum": [
+            "travel-v1",
+            "conversation-v1"
+          ],
+          "title": "Visit Rules",
+          "type": "string"
+        },
         "visits": {
           "default": 1,
           "maximum": 12,
-          "minimum": 1,
+          "minimum": 0,
           "title": "Visits",
           "type": "integer"
+        },
+        "encounter_id": {
+          "default": "",
+          "title": "Encounter Id",
+          "type": "string"
+        },
+        "activation_validation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActivationValidation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "city_generation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CityGeneration"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "flags": {
           "items": {
@@ -345,6 +663,14 @@
             "type": "string"
           },
           "title": "Choices",
+          "type": "array"
+        },
+        "understanding_records": {
+          "items": {
+            "$ref": "#/$defs/UnderstandingRecord"
+          },
+          "maxItems": 32,
+          "title": "Understanding Records",
           "type": "array"
         },
         "interests": {
@@ -509,6 +835,246 @@
       "title": "SavedInterest",
       "type": "object"
     },
+    "ToolObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "tool_id": {
+          "enum": [
+            "search_entities",
+            "get_related_entities",
+            "inspect_connection",
+            "check_progress",
+            "record_discovery"
+          ],
+          "title": "Tool Id",
+          "type": "string"
+        },
+        "arguments": {
+          "additionalProperties": true,
+          "title": "Arguments",
+          "type": "object"
+        },
+        "result": {
+          "additionalProperties": true,
+          "title": "Result",
+          "type": "object"
+        }
+      },
+      "required": [
+        "tool_id",
+        "arguments",
+        "result"
+      ],
+      "title": "ToolObservation",
+      "type": "object"
+    },
+    "UnderstandingAssessment": {
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "title": "Attempt",
+          "type": "boolean"
+        },
+        "choice_id": {
+          "maxLength": 80,
+          "title": "Choice Id",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "supported",
+            "incomplete",
+            "unsupported",
+            "unclear"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "link_index": {
+          "maximum": 4,
+          "minimum": 0,
+          "title": "Link Index",
+          "type": "integer"
+        },
+        "source_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Source Id"
+        },
+        "target_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Target Id"
+        },
+        "connection_quote": {
+          "maxLength": 1000,
+          "title": "Connection Quote",
+          "type": "string"
+        },
+        "limitation_quote": {
+          "maxLength": 1000,
+          "title": "Limitation Quote",
+          "type": "string"
+        },
+        "interpretation_quote": {
+          "maxLength": 1000,
+          "title": "Interpretation Quote",
+          "type": "string"
+        },
+        "commitment_quote": {
+          "default": "",
+          "maxLength": 1000,
+          "title": "Commitment Quote",
+          "type": "string"
+        },
+        "addresses_affinity": {
+          "title": "Addresses Affinity",
+          "type": "boolean"
+        },
+        "respects_limits": {
+          "title": "Respects Limits",
+          "type": "boolean"
+        },
+        "separates_fiction": {
+          "title": "Separates Fiction",
+          "type": "boolean"
+        },
+        "explicit_choice": {
+          "title": "Explicit Choice",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "attempt",
+        "choice_id",
+        "status",
+        "link_index",
+        "source_id",
+        "target_id",
+        "connection_quote",
+        "limitation_quote",
+        "interpretation_quote",
+        "addresses_affinity",
+        "respects_limits",
+        "separates_fiction",
+        "explicit_choice"
+      ],
+      "title": "UnderstandingAssessment",
+      "type": "object"
+    },
+    "UnderstandingRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "resident": {
+          "enum": [
+            "mara",
+            "ivo",
+            "sera",
+            "beacon"
+          ],
+          "title": "Resident",
+          "type": "string"
+        },
+        "choice_id": {
+          "maxLength": 80,
+          "minLength": 1,
+          "title": "Choice Id",
+          "type": "string"
+        },
+        "evidence_sha256": {
+          "pattern": "^[a-f0-9]{64}$",
+          "title": "Evidence Sha256",
+          "type": "string"
+        },
+        "assessment": {
+          "$ref": "#/$defs/UnderstandingAssessment"
+        },
+        "review": {
+          "$ref": "#/$defs/UnderstandingReview"
+        },
+        "explanation": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Explanation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "resident",
+        "choice_id",
+        "evidence_sha256",
+        "assessment",
+        "review",
+        "explanation"
+      ],
+      "title": "UnderstandingRecord",
+      "type": "object"
+    },
+    "UnderstandingReview": {
+      "additionalProperties": false,
+      "properties": {
+        "connection_meaning": {
+          "enum": [
+            "association_explanation",
+            "names_only",
+            "different_or_invented_pair",
+            "unsupported_claim",
+            "unclear"
+          ],
+          "title": "Connection Meaning",
+          "type": "string"
+        },
+        "limitation_meaning": {
+          "enum": [
+            "acknowledges_evidence_limits",
+            "request_or_promise",
+            "absent_or_contradicted"
+          ],
+          "title": "Limitation Meaning",
+          "type": "string"
+        },
+        "fiction_meaning": {
+          "enum": [
+            "distinguishes_fiction",
+            "not_explained",
+            "claims_fact"
+          ],
+          "title": "Fiction Meaning",
+          "type": "string"
+        },
+        "choice_meaning": {
+          "enum": [
+            "present_sharing",
+            "present_guarding",
+            "past_or_absent"
+          ],
+          "title": "Choice Meaning",
+          "type": "string"
+        }
+      },
+      "required": [
+        "connection_meaning",
+        "limitation_meaning",
+        "fiction_meaning",
+        "choice_meaning"
+      ],
+      "title": "UnderstandingReview",
+      "type": "object"
+    },
     "WorldObject": {
       "additionalProperties": false,
       "properties": {
@@ -618,10 +1184,19 @@
         "authored",
         "game_master_validated",
         "game_master_no_state_change",
-        "cultural_evidence_tool"
+        "cultural_evidence_tool",
+        "confirmed_state_tool"
       ],
       "title": "Narrative Source",
       "type": "string"
+    },
+    "tool_results": {
+      "items": {
+        "$ref": "#/$defs/ToolObservation"
+      },
+      "maxItems": 2,
+      "title": "Tool Results",
+      "type": "array"
     },
     "idempotent_replay": {
       "default": false,

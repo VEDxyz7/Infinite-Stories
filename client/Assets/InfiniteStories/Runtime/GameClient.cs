@@ -237,6 +237,14 @@ namespace InfiniteStories
                 if (d <= distance) { nearest=obj; distance=d; }
             }
             if (nearest==null) { ui.Status("Move closer to a resident, object or arch, then press E."); yield break; }
+            // Opening a resident encounter is a confirmed backend action, not
+            // a local-only dialogue panel. All input paths use this coroutine.
+            if (nearest.kind=="npc" || nearest.kind=="gate")
+            {
+                yield return Act(new Command { kind="interact",target=nearest.id });
+                if (busy || HasPending || view==null || !string.IsNullOrEmpty(view.state.ending)) yield break;
+            }
+            if (view.state.visit_rules=="conversation-v1" && (nearest.kind=="npc" || nearest.kind=="gate") && view.state.encounter_id!=nearest.id) yield break;
             world.Emphasize(nearest.id);
             ui.ShowDialogue(view,nearest,command => { if (!busy && !HasPending) StartCoroutine(Act(command)); });
         }

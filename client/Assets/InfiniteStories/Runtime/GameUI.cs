@@ -197,7 +197,7 @@ namespace InfiniteStories
             lines.Add(next!=null ? "NEXT · "+next.label : "Every memory is secured.");
 
             objectives.text = string.Join("\n", lines);
-            if(fresh&&view.state.cultural_context?.rule_version=="cultural-investigation-v2"&&!PlayerPrefs.HasKey("is.learnedInvestigation"))ShowTutorial();
+            if(fresh&&(view.state.cultural_context?.rule_version=="cultural-investigation-v2"||view.state.cultural_context?.rule_version=="cultural-understanding-v3")&&!PlayerPrefs.HasKey("is.learnedInvestigation"))ShowTutorial();
             if (!string.IsNullOrEmpty(view.narrative)&&view.narrative!="Position saved.") Status((view.narrative_source == "game_master_no_state_change" ? "Game Master reflection (no game changes): " : "") + view.narrative);
         }
         public void ShowDialogue(GameView view, WorldObject obj, Action<Command> act)
@@ -271,7 +271,7 @@ namespace InfiniteStories
             if(tutorial!=null)Destroy(tutorial.gameObject);
             tutorial=Panel(canvas,new Vector2(.025f,.66f),new Vector2(.40f,.90f),ink);
             Label(tutorial,"YOUR FIRST NIGHT",18,new Vector2(.05f,.77f),new Vector2(.92f,.97f),gold);
-            Label(tutorial,"WASD / arrows · E to investigate\nOnly entering a district spends a visit.\nMara / Ivo's notes / Sera / Curator\nC: Scanner · J: Journal · Esc: close/menu",15,new Vector2(.05f,.20f),new Vector2(.95f,.77f),pale);
+            Label(tutorial,"WASD / arrows · E to investigate\nA new conversation spends one visit.\nContinuing it is free; leave the last one before dawn only if ready.\nMara / Ivo's notes / Sera / Curator\nC: Scanner · J: Journal · Esc: close/menu",15,new Vector2(.05f,.20f),new Vector2(.95f,.77f),pale);
             Button(tutorial,"Understood",new Vector2(.05f,.025f),new Vector2(.95f,.20f),()=>{PlayerPrefs.SetInt("is.learnedInvestigation",1);PlayerPrefs.Save();Destroy(tutorial.gameObject);tutorial=null;});
         }
         public void ShowStory(){if(confirmed==null||TitleVisible)return;OpenNotebook("STORY SO FAR","story");ScrollBody(overlay,string.IsNullOrEmpty(StoryText)?string.Join("\n",confirmed.state.history):StoryText);}
@@ -320,10 +320,10 @@ namespace InfiniteStories
                 var link=links[i];var selected=Array.Find(link.recommendations,e=>e.entity_id==link.selected_id);
                 if(tool==0){foreach(var item in new[]{link.seed})if(string.IsNullOrEmpty(query)||item.name.IndexOf(query,StringComparison.OrdinalIgnoreCase)>=0)lines.Add(item.name+" ["+item.category+"] · resolved seed");foreach(var item in link.recommendations)if(string.IsNullOrEmpty(query)||item.name.IndexOf(query,StringComparison.OrdinalIgnoreCase)>=0)lines.Add(item.name+" ["+item.category+"] · returned result");}
                 else if(tool==1){lines.Add(link.seed.name+" -> "+string.Join(" · ",Array.ConvertAll(link.recommendations,e=>e.name)));}
-                else if(tool==3||tool==4){lines.Add(link.seed.name+" -> "+selected.name);foreach(var stage in view.state.cultural_context.rule_version=="cultural-investigation-v2"?new[]{"trace_","culture_","proof_"}:new[]{"culture_"})lines.Add((Array.IndexOf(view.state.flags,stage+i)>=0?"CONFIRMED · ":"MISSING · ")+(stage=="trace_"?"Ivo's screening note":stage=="culture_"?"Sera's memory card":"Curator's supported claim"));lines.Add("Our creative setting: "+link.setting+" (fiction).\n");}
+                else if(tool==3||tool==4){lines.Add(link.seed.name+" -> "+selected.name);foreach(var stage in (view.state.cultural_context.rule_version=="cultural-investigation-v2"||view.state.cultural_context.rule_version=="cultural-understanding-v3")?new[]{"trace_","culture_","proof_"}:new[]{"culture_"})lines.Add((Array.IndexOf(view.state.flags,stage+i)>=0?"CONFIRMED · ":"MISSING · ")+(stage=="trace_"?"Ivo's screening note":stage=="culture_"?"Sera's memory card":"Curator's supported claim"));lines.Add("Our creative setting: "+link.setting+" (fiction).\n");}
             }
             if(tool==2)return EvidenceText(view,replay,true,true).Replace("LOCAL CAPTURE REPLAY","REPLAY EVIDENCE");
-            if(tool==4)lines.Add("Approach a screening note, memory card or the Curator. Record uses only the currently allowed server choice; it costs no visit.");
+            if(tool==4)lines.Add("Approach a screening note, memory card or the Curator. Record uses only the currently allowed server choice. Starting a resident or Curator encounter spends one visit.");
             if(tool==0&&lines.Count==3)lines.Add("No saved entity matches. Change the query; new cultural favourites require a new run.");
             return string.Join("\n",lines);
         }

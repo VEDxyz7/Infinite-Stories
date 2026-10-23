@@ -274,7 +274,7 @@ class CulturalProvider:
                             supporting_tag_id=tag,
                         )
                     )
-            return CulturalContext(links=links, rule_version="cultural-investigation-v2")
+            return CulturalContext(links=links, rule_version="cultural-understanding-v3")
         finally:
             self._lock.release()
 

@@ -137,6 +137,7 @@ async def evaluate(model):
             )
         except DomainError as e:
             results.append({"case": name, "pass": False, "error": e.code, "structured_valid": False})
+        results[-1]["metrics"] = dict(gm.metrics)
         results[-1]["latency_ms"] = round((time.perf_counter() - begun) * 1000)
         print(name, "PASS" if results[-1]["pass"] else "FAIL", results[-1]["latency_ms"], flush=True)
     # Actual previously captured cultural results, replayed locally for context only.
@@ -163,7 +164,7 @@ async def evaluate(model):
                 obj = next(o for loc in derived.locations for o in loc.objects if o.id.startswith("cultural_echo_"))
                 state.location_id = next(loc.id for loc in derived.locations if obj in loc.objects)
                 state.x, state.y = obj.x, obj.y
-                state.flags = ["map", "rhythm"]
+                state.flags = ["map", "rhythm", "trace_0"]
                 view = game_view(chapter, state, "local-cultural-evaluation", 0, "")
                 action, narrative = await gm.run(
                     chapter, view, "I carry this cultural memory onward. " + obj.choices[0].label
@@ -195,6 +196,7 @@ async def evaluate(model):
                     "structured_valid": False,
                 }
             )
+        results[-1]["metrics"] = dict(gm.metrics)
         results[-1]["latency_ms"] = round((time.perf_counter() - begun) * 1000)
         print(results[-1]["case"], "PASS" if results[-1]["pass"] else "FAIL", results[-1]["latency_ms"], flush=True)
         if results[-1]["structured_valid"]:
@@ -283,6 +285,7 @@ async def evaluate_grounding(model, explicit_read=False):
                     "structured_valid": False,
                     "error": error.code,
                 }
+            row["metrics"] = dict(gm.metrics)
             row["latency_ms"] = round((time.perf_counter() - begun) * 1000)
             results.append(row)
             print(row["case"], "PASS" if row["pass"] else "FAIL", row["latency_ms"], flush=True)
@@ -344,7 +347,11 @@ def persistent_journey(model, cultural=False):
                     )
                     assert talk.status_code == 200, talk.text
                     spoken = talk.json()
-                    assert spoken["state"] == view["state"] and spoken["revision"] == view["revision"]
+                    for key in ("flags", "choices", "ending", "cultural_context", "interests", "activation_validation"):
+                        assert spoken["state"][key] == view["state"][key], "DIALOGUE_MUTATED_CONFIRMED_QUEST"
+                    assert spoken["state"]["visits"] == 1 and spoken["state"]["encounter_id"] == "mara"
+                    assert spoken["revision"] == view["revision"] + 1
+                    view = spoken  # The confirmed encounter write advances the revision.
                     assert "pocket of dawn" in spoken["narrative"].lower(), "DIALOGUE_CONTINUITY_PHRASE_MISSING"
                     if "map" not in spoken["state"]["flags"] and re.search(
                         r"map is yours now|you already have the first memory", spoken["narrative"], re.I
@@ -352,10 +359,19 @@ def persistent_journey(model, cultural=False):
                         narrative_violations.append("Unacquired map ownership claimed during no-action dialogue")
                     dialogue.append(spoken["narrative"])
                     dialogue_calls += 1
+            explanation = ""
+            if cultural:
+                link = view["state"]["cultural_context"]["links"][0]
+                selected = next(e for e in link["recommendations"] if e["entity_id"] == link["selected_id"])
+                explanation = (
+                    f" The saved recommendation returns {selected['name']} for {link['seed']['name']}. "
+                    "This is aggregate affinity, not evidence of collaboration or my personality. "
+                    "Our story setting is creative interpretation, not a provider fact."
+                )
             body = {
                 "request_id": str(uuid4()),
                 "expected_revision": view["revision"],
-                "text": "I accept Mara's hand-drawn map.",
+                "text": "I accept Mara's hand-drawn map." + explanation,
             }
             reply = client.post(url + "/turns", headers=headers, json=body)
             assert reply.status_code == 200, reply.text
@@ -369,10 +385,13 @@ def persistent_journey(model, cultural=False):
                 ("I promise Sera to protect the private letters.", "chronicle"),
                 ("I light the beacon and leave together with my friends.", "beacon"),
             ):
-                saved = visit_next(client, headers, saved)
+                if not cultural:
+                    saved = visit_next(client, headers, saved)
                 if cultural and flag in ("rhythm", "beacon"):
                     target = "screening_note_0" if flag == "rhythm" else "beacon"
-                    saved = move(client, headers, saved, 12 if flag == "rhythm" else 14, 6 if flag == "rhythm" else 9)
+                    from backend.tests.test_service import goto_object
+
+                    saved = goto_object(client, headers, saved, target)
                     obj = next(o for o in saved["nearby"] if o["id"] == target)
                     option = next(
                         c for c in obj["choices"] if c["id"].startswith("trace_" if flag == "rhythm" else "prove_")
@@ -383,7 +402,7 @@ def persistent_journey(model, cultural=False):
                         json={
                             "request_id": str(uuid4()),
                             "expected_revision": saved["revision"],
-                            "text": option["label"],
+                            "text": option["label"] + (explanation if flag == "beacon" else ""),
                         },
                     )
                     assert evidence_reply.status_code == 200, evidence_reply.text
@@ -392,7 +411,9 @@ def persistent_journey(model, cultural=False):
                         "EVIDENCE_ACTION_NOT_APPLIED"
                     )
                 if cultural and flag == "chronicle":
-                    saved = move(client, headers, saved, 12, 6)
+                    from backend.tests.test_service import goto_object
+
+                    saved = goto_object(client, headers, saved, "cultural_echo_0")
                     card = next(o for o in saved["nearby"] if o["id"] == "cultural_echo_0")
                     card_body = {
                         "request_id": str(uuid4()),
@@ -403,8 +424,18 @@ def persistent_journey(model, cultural=False):
                     assert card_reply.status_code == 200, card_reply.text
                     saved = card_reply.json()
                     assert "culture_0" in saved["state"]["flags"], "CULTURAL_CARD_NOT_APPLIED"
+                if cultural:
+                    from backend.tests.test_service import goto_object
+
+                    saved = goto_object(
+                        client, headers, saved, {"rhythm": "ivo", "chronicle": "sera", "beacon": "beacon"}[flag]
+                    )
                 saved = move(client, headers, saved, 14, 9)
-                body = {"request_id": str(uuid4()), "expected_revision": saved["revision"], "text": words}
+                body = {
+                    "request_id": str(uuid4()),
+                    "expected_revision": saved["revision"],
+                    "text": words + (explanation if flag != "beacon" else ""),
+                }
                 reply = client.post(url + "/turns", headers=headers, json=body)
                 assert reply.status_code == 200, reply.text
                 saved = reply.json()

@@ -231,7 +231,7 @@ def create_app(settings=None, game_master=None, cultural_provider=None):
         if not app.state.gm.available:
             raise DomainError(
                 "GAME_MASTER_UNAVAILABLE",
-                "Free-form actions are unavailable. Your progress is safe and predefined choices still work.",
+                "The Game Master is unavailable. Saved progress is safe; cultural explanations can be retried when it returns.",
                 503,
             )
         previous, view = store.reserve_turn(gid, bearer, body, settings.llm_turn_limit, settings.llm_daily_turn_limit)
@@ -239,7 +239,7 @@ def create_app(settings=None, game_master=None, cultural_provider=None):
             if "turn_error" in previous:
                 raise DomainError(
                     previous["turn_error"],
-                    "This turn failed without changing progress. It will not call the model again; predefined choices remain available.",
+                    "This turn failed without changing progress. It will not call the model again; retry with a new turn when the Game Master is available.",
                     503,
                 )
             return {**previous, "idempotent_replay": True}
@@ -252,7 +252,11 @@ def create_app(settings=None, game_master=None, cultural_provider=None):
                 body,
                 proposal,
                 narrative,
-                narrative_source="cultural_evidence_tool" if isinstance(result, CulturalEvidenceReply) else None,
+                narrative_source=result.source
+                if isinstance(result, CulturalEvidenceReply) and proposal is None
+                else None,
+                tool_results=result.observations if isinstance(result, CulturalEvidenceReply) else None,
+                understanding=result.understanding if isinstance(result, CulturalEvidenceReply) else None,
             )
         except DomainError as error:
             store.fail_turn(gid, body.request_id, error.code)

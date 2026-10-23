@@ -6,7 +6,10 @@ VERSION = "cultural-investigation-v2"
 
 
 def enabled(state):
-    return state.cultural_context is not None and state.cultural_context.rule_version == VERSION
+    return state.cultural_context is not None and state.cultural_context.rule_version in (
+        VERSION,
+        "cultural-understanding-v3",
+    )
 
 
 def furnish(chapter):
@@ -30,7 +33,8 @@ def decorate(chapter, state):
     cinema = next(p for p in chapter.locations if p.id == "market")
     gate = next(o for p in chapter.locations for o in p.objects if o.id == "beacon")
     traces, proofs = [], []
-    next_proof = next((i for i in range(len(state.cultural_context.links)) if f"proof_{i}" not in state.flags), None)
+    order = state.city_generation.proof_order if state.city_generation else range(len(state.cultural_context.links))
+    next_proof = next((i for i in order if f"proof_{i}" not in state.flags), None)
     for i, link in enumerate(state.cultural_context.links):
         entity = next(e for e in link.recommendations if e.entity_id == link.selected_id)
         traces.append(f"trace_{i}")
@@ -87,4 +91,4 @@ def decorate(chapter, state):
         )
     for choice in gate.choices:
         if choice.ending:
-            choice.requires.extend(proofs)
+            choice.requires.extend([f"proof_{i}" for i in order])
