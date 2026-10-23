@@ -26,7 +26,7 @@ namespace InfiniteStories
         public Rect WorldViewport => TitleVisible ? new Rect(.60f,0,.40f,.915f) : ActivePanel=="dialogue" ? new Rect(0,.32f,1,.595f) : (ActivePanel=="scanner"||ActivePanel=="journal"||ActivePanel=="story"||ActivePanel=="pause") ? new Rect(0,0,.60f,.915f) : ActivePanel=="ending" ? new Rect(0,0,.57f,.915f) : new Rect(0,.18f,1,.735f);
         public bool Blocking { get; private set; }
         public bool TitleVisible { get; private set; }
-        public Action Resume, StartAuthored, StartCultural, Interact, Retry, Reload, SubmitTurn, Pause, ReturnTitle;
+        public Action Resume, StartAuthored, StartCultural, StartControl, CompareModes, Interact, Retry, Reload, SubmitTurn, Pause, ReturnTitle;
         public string ActionText => actionInput != null ? actionInput.text : "";
         InputField actionInput;
         readonly List<Interest> interests = new List<Interest>();
@@ -154,7 +154,7 @@ namespace InfiniteStories
                 selection.text = string.Join(" · ", interests.ConvertAll(i => i.name)); });
             Button(overlay, "Clear", new Vector2(.46f,.46f), new Vector2(.65f,.53f), () => { interests.Clear(); selection.text = ""; });
             Button(overlay, canResume ? "Resume saved journey" : "Check for a saved journey", new Vector2(.08f,.27f), new Vector2(.92f,.36f), () => Resume?.Invoke());
-            var play = Button(overlay, "Play the original authored chapter", new Vector2(.08f,.16f), new Vector2(.92f,.25f), () => StartAuthored?.Invoke());
+            var play = Button(overlay, "Qloo off · play invented control city", new Vector2(.08f,.16f), new Vector2(.92f,.25f), () => StartControl?.Invoke());
             culturalStart = Button(overlay, "Start a culture-shaped journey", new Vector2(.08f,.05f), new Vector2(.92f,.14f), () => StartCultural?.Invoke());
             EventSystem.current.SetSelectedGameObject(play.gameObject);
             SetCulturalAvailability(CulturalAvailable);
@@ -186,7 +186,7 @@ namespace InfiniteStories
             if((view.state.flags?.Length ?? 0)>previous)audioCues.Discovery();
             if(oldLocation!=null&&oldLocation!=view.location.id)audioCues.Open();
             location.text=NightArt.Venue(view.location.id);
-            modeLabel.text=(ReplayVerification?"REPLAY PREVIEW · ":"")+(12-view.state.visits)+" visits remain";
+            modeLabel.text=(view.state.mode=="generic_control"?"SYNTHETIC CONTROL · ":ReplayVerification?"REPLAY PREVIEW · ":"")+(12-view.state.visits)+" visits remain";
             var lines = new List<string>();
             int completed=0; foreach(var item in view.objectives)if(item.completed)completed++;
             string localGoal=view.location.id=="quay"?"map":view.location.id=="market"?"rhythm":view.location.id=="archive"?"chronicle":"beacon";
@@ -194,6 +194,7 @@ namespace InfiniteStories
             if(view.location.id=="market")next=Array.Find(view.objectives,o=>!o.completed&&o.id.StartsWith("trace_",StringComparison.Ordinal))??next;
             if(view.location.id=="station")next=Array.Find(view.objectives,o=>!o.completed&&o.id.StartsWith("proof_",StringComparison.Ordinal))??next;
             if(view.location.id=="archive")next=Array.Find(view.objectives,o=>!o.completed&&o.id.StartsWith("culture_",StringComparison.Ordinal))??next;
+            if(view.state.mode=="generic_control"){string goal=view.location.id=="archive"?"control_trace":view.location.id=="quay"&&Array.IndexOf(view.state.flags,"rhythm")>=0?"control_memory":view.location.id=="station"?"control_proof":"";next=Array.Find(view.objectives,o=>!o.completed&&o.id==goal)??next;}
             lines.Add(next!=null ? "NEXT · "+next.label : "Every memory is secured.");
 
             objectives.text = string.Join("\n", lines);
@@ -260,12 +261,29 @@ namespace InfiniteStories
                 if(target!=null)lines.Add("Saved Qloo connection: "+link.seed.name+" -> "+target.name);
             }
             if(ReplayVerification)lines.Add("Replay preview · historical cultural responses, not live requests.");
-            lines.Add(view.state.mode=="cultural"?"Story settings are our fiction; cultural connections are saved provider evidence.":"Original authored journey · no cultural provider evidence.");
+            if(view.state.taste_card?.version=="taste-card-v1")lines.Add(TasteCardText(view.state.taste_card));
+            lines.Add(view.state.mode=="cultural"?"Story settings are our fiction; cultural connections are saved provider evidence.":view.state.mode=="generic_control"?"SYNTHETIC CONTROL · all cultural content is invented, not Qloo evidence.":"Original authored journey · no cultural provider evidence.");
             lines.Add("No individual personality profile or taste score was inferred.");
             ScrollBody(overlay,string.Join("\n",lines),.80f,.26f);
             Button(overlay,"Explore saved discoveries",new Vector2(.06f,.14f),new Vector2(.94f,.23f),ShowScanner);
             Button(overlay,"Return to title",new Vector2(.06f,.025f),new Vector2(.94f,.12f),()=>ReturnTitle?.Invoke());
             if(endingCueSession!=view.session_id){endingCueSession=view.session_id;audioCues.Ending(view.state.ending=="dawn");}
+        }
+        public static string TasteCardText(TasteCard card)
+        {
+            var lines=new List<string>{ "",card.profile.ToUpperInvariant(),card.profile_basis,"","YOUR STARTING FAVOURITES" };
+            foreach(var favourite in card.favourites??Array.Empty<Interest>())lines.Add(favourite.name+" · "+favourite.category);
+            lines.Add("\nCONFIRMED DISCOVERIES");
+            foreach(var discovery in card.discoveries??Array.Empty<string>())lines.Add(discovery);
+            if((card.discoveries?.Length??0)==0)lines.Add("A first glimpse of the city. No discoveries were confirmed before dawn.");
+            lines.Add("\nCULTURAL ENCOUNTERS");
+            foreach(var entity in card.encountered??Array.Empty<CulturalEntity>())lines.Add(entity.name+" · "+entity.category);
+            foreach(var link in card.relationships??Array.Empty<TasteRelationship>())lines.Add(link.source.name+" -> "+link.target.name+"\n"+link.explanation);
+            lines.Add("\nTRY NEXT");
+            foreach(var link in card.try_next??Array.Empty<TasteRelationship>())lines.Add(link.target.name+" · "+link.target.category+"\n"+link.explanation);
+            lines.Add(card.recommendations_note);
+            if(card.domain=="invented_demo")lines.Add("SYNTHETIC CONTROL · invented story only. No Qloo entities or recommendations.");
+            return string.Join("\n",lines);
         }
         public void ShowTutorial(){
             if(tutorial!=null)Destroy(tutorial.gameObject);
@@ -305,13 +323,14 @@ namespace InfiniteStories
             query.onValueChanged.AddListener(text=>{scannerQuery=text;string body=ScannerText(confirmed,scannerTool,text,ReplayVerification,scannerEvidence);scannerBodyText.text=body;ActivePanelText=body;});
             if(scannerTool==4){
                 StoryChoice record=null;WorldObject target=null;
-                foreach(var obj in confirmed.nearby)foreach(var option in obj.choices??Array.Empty<StoryChoice>())if(option.id.StartsWith("trace_",StringComparison.Ordinal)||option.id.StartsWith("echo_",StringComparison.Ordinal)||option.id.StartsWith("prove_",StringComparison.Ordinal)){target=obj;record=option;break;}
+                foreach(var obj in confirmed.nearby)foreach(var option in obj.choices??Array.Empty<StoryChoice>())if(option.id.StartsWith("trace_",StringComparison.Ordinal)||option.id.StartsWith("echo_",StringComparison.Ordinal)||option.id.StartsWith("prove_",StringComparison.Ordinal)||option.id.StartsWith("control_",StringComparison.Ordinal)){target=obj;record=option;break;}
                 if(record!=null){var chosen=record;var obj=target;Button(overlay,"Record nearby discovery",new Vector2(.05f,.12f),new Vector2(.70f,.20f),()=>RecordDiscovery?.Invoke(new Command{kind="choose",target=obj.id,choice=chosen.id}));}
-            }else Button(overlay,scannerEvidence?"Qloo off: authored control":"Return to saved evidence",new Vector2(.05f,.12f),new Vector2(.70f,.20f),ToggleScannerComparison);
-            Label(overlay,"Saved catalogue · no new provider requests",12,new Vector2(.05f,.04f),new Vector2(.73f,.10f),pale);
+            }else Button(overlay,confirmed.state.mode=="generic_control"?"Qloo on · resume / start separate city":"Qloo off · resume / start control city",new Vector2(.05f,.12f),new Vector2(.70f,.20f),ToggleScannerComparison);
+            Label(overlay,confirmed.state.mode=="generic_control"?"Synthetic demo · no cultural provider evidence":"Saved catalogue · no new provider requests",12,new Vector2(.05f,.04f),new Vector2(.73f,.10f),pale);
         }
         Text CreateScannerBody(string body){ScrollBody(overlay,body,.68f,.23f);return overlay.GetChild(overlay.childCount-1).GetComponentInChildren<Text>();}
         public static string ScannerText(GameView view,int tool,string query,bool replay,bool evidence=true){
+            if(view.state.mode=="generic_control")return ControlText(view);
             if(!evidence)return EvidenceText(view,replay,false,false);
             var lines=new List<string>{replay?"REPLAY EVIDENCE · captured cultural results":"SAVED QLOO EVIDENCE","No new live search. Affinity is not identity or collaboration.",""};
             var links=view.state.cultural_context?.links??Array.Empty<CulturalLink>();
@@ -327,12 +346,18 @@ namespace InfiniteStories
             if(tool==0&&lines.Count==3)lines.Add("No saved entity matches. Change the query; new cultural favourites require a new run.");
             return string.Join("\n",lines);
         }
-        public void ToggleScannerComparison(){if(ActivePanel=="scanner"){scannerEvidence=!scannerEvidence;ShowScanner();}}
+        public void ToggleScannerComparison(){if(ActivePanel=="scanner")CompareModes?.Invoke();}
+        public static string ControlText(GameView view){
+            var control=view.state.generic_control;
+            if(view.state.mode!="generic_control"||control?.version!="synthetic-control-v1")return "No synthetic control is attached to this run.";
+            return "QLOO OFF · SYNTHETIC CONTROL\nInvented entities, not real cultural evidence.\n\n"+control.record+" (invented record)\n"+control.film+" (invented film)\nAuthored motif: "+control.motif+". No measured affinity.\n\nRoute: Mara -> boutique screening note -> Ivo -> record-bar film display -> Sera -> Curator motif proof.\n\n"+StoryTokens(view.state.flags)+"\n"+view.state.visits+" / 12 visits. Separate saved city; your Qloo run is unchanged.";
+        }
         // Pure presentation of server-confirmed data. No inference or synthetic provider facts.
         public string DiagnosticEvidence {get;private set;}="";
         public static string EvidenceText(GameView view,bool replay,bool evidence=true,bool diagnostics=true)
         {
-            if(!evidence)return "QLOO OFF · AUTHORED CONTROL\nInvented setting, not cultural evidence.\n\nA quiet night city. Three residents offer a way home, a rhythm and a promise.\n\nThis comparison changes only this panel. Your real saved cultural context, quest and progress remain unchanged.";
+            if(view.state.mode=="generic_control")return ControlText(view);
+            if(!evidence)return "QLOO OFF · AUTHORED CONTROL requires a separate saved city. Invented demo content is not cultural evidence. Use the comparison button to start/resume it; this saved Qloo run is never relabelled as control data.";
             var lines=new List<string>{replay?(diagnostics?"LOCAL CAPTURE REPLAY · historical Qloo responses, no live calls":"REPLAY PREVIEW · saved Qloo responses, no live requests"):"SAVED QLOO EVIDENCE · no new requests", "Recommendations express aggregate cultural affinity, not facts about your personality or a collaboration.",""};
             var links=view?.state?.cultural_context?.links;
             if(links==null || links.Length==0) {lines.Add("Authored chapter · no Qloo cultural evidence is attached to this save.");return string.Join("\n",lines);}
@@ -358,6 +383,7 @@ namespace InfiniteStories
             var lines=new List<string>{NightArt.Venue(confirmed.location.id),confirmed.location.name+" · visit "+confirmed.state.visits+" of 12","","CONFIRMED OBJECTIVES"};
             foreach(var goal in confirmed.objectives)lines.Add((goal.completed?"COMPLETE · ":"OPEN · ")+goal.label);
             if(confirmed.state.cultural_context!=null){lines.Add("\nRELATIONSHIP BOARD · saved evidence");lines.Add(ScannerText(confirmed,3,"",ReplayVerification));}
+            if(confirmed.state.mode=="generic_control")lines.Add(ControlText(confirmed));
             lines.Add("\nINVENTORY / STORY TOKENS (fictional)");lines.Add(StoryTokens(confirmed.state.flags));
             lines.Add("\nCONFIRMED JOURNEY");foreach(var entry in confirmed.state.history ?? Array.Empty<string>())lines.Add("• "+entry+"\n");
             lines.Add("\nART & SOUND · Kenney (CC0) · original night composition by Infinite Stories.");ScrollBody(overlay,string.Join("\n",lines));Button(overlay,"Latest conversation",new Vector2(.05f,.12f),new Vector2(.56f,.20f),ShowStory);Button(overlay,"Help",new Vector2(.60f,.12f),new Vector2(.92f,.20f),ShowTutorial);

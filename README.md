@@ -3,8 +3,10 @@
 A top-down Unity night-city RPG with four connected areas, three residents,
 a twelve-visit clock, consequential choices and persistent saves. Investigate
 cultural connections through a server-side Qloo adapter, or play the explicitly
-authored chapter without providers. An optional local LLM interprets free-form
+authored chapter without providers. The local LLM interprets free-form
 actions; the backend validates every proposed action before changing game state.
+It is optional for the authored chapter, but new cultural runs require it for
+evidence-grounded resident explanations and Curator understanding gates.
 
 Supported cultural paths are **artists → films, films → artists, brands → films,
 and video games → films**. Books and arbitrary category combinations are not
@@ -19,9 +21,11 @@ intentionally excluded from this repository.
 
 New cultural runs follow a complete evidence chain: Mara's map → Ivo's screening
 notes → Sera's memory cards and privacy promise → a supported affinity claim to
-the Curator → an ending and Taste Card. Only entering a district spends a visit;
-looking, talking and rejected claims are free. Older saves retain their original
-rules. The Scanner searches this run's saved catalogue, shows related results and
+the Curator → an ending and Taste Card. Entering a resident/Curator conversation
+spends one of twelve visits; continuing that encounter is free. Movement, travel
+and evidence reads do not independently spend visits. Failed model calls and
+rejected commands preserve progress. The final encounter may finish on visit12;
+leaving it without success brings dawn. Older saves retain their original rules. The Scanner searches this run's saved catalogue, shows related results and
 provenance, tracks progress and records nearby validated discoveries; it does not
 silently perform live searches. See [the gameplay specification](docs/GAMEPLAY_SPEC.md).
 
@@ -73,7 +77,7 @@ For a release artifact, use `ProjectBuilder.BuildWeb` with
 `IS_PUBLIC_API_URL=https://YOUR_BACKEND_ORIGIN`. Build output is ignored; build it
 locally rather than committing it. A successful build is not deployment approval.
 
-## Optional local Game Master
+## Local Game Master
 
 Install [Ollama](https://ollama.com/) separately and explicitly download the local
 `qwen3.5:4b` model (`ollama pull qwen3.5:4b`). Runtime and weights are not bundled.

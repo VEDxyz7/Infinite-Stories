@@ -811,6 +811,9 @@ class OllamaGameMaster:
             encounter_id=state.encounter_id,
             cultural_evidence=evidence,
         )
+        if state.generic_control:
+            context["evidence_domain"] = "invented_demo: no real-world cultural claims or Qloo evidence"
+            context["synthetic_control"] = state.generic_control.model_dump()
         actions = {"none": None}
         labels = [
             {

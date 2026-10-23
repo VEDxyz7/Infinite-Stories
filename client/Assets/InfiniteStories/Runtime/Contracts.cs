@@ -17,6 +17,15 @@ namespace InfiniteStories
         public UnderstandingRecord[] understanding_records;
         public string[] flags; public string[] choices; public string ending; public string[] history; public string cultural_source;
         public Interest[] interests; public CulturalContext cultural_context;
+        public GenericControl generic_control; public TasteCard taste_card;
+    }
+    [Serializable] public class GenericControl { public string version,seed,source,record,film,motif; }
+    [Serializable] public class TasteRelationship { public CulturalEntity source,target; public CulturalEvidence[] provenance; public string explanation; }
+    [Serializable] public class TasteCard
+    {
+        public string version,domain,ending,profile,profile_basis,recommendations_note;
+        public Interest[] favourites; public string[] discoveries,metadata_labels;
+        public CulturalEntity[] encountered; public TasteRelationship[] relationships,try_next;
     }
     [Serializable] public class ActivationValidation { public string version; public int candidate; public string evidence_sha256, chapter_sha256, commands_sha256, generation_sha256, generated_chapter_sha256; public int steps, visits; public string ending; }
     [Serializable] public class ResidentLinks { public int mara, ivo, sera; }

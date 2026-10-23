@@ -220,7 +220,7 @@ def activate_candidate(base, initial):
                     if candidate.city_generation
                     else None,
                     "generated_chapter_sha256": initial_chapter_fingerprint(base, candidate)
-                    if candidate.city_generation
+                    if candidate.city_generation or candidate.generic_control
                     else None,
                     "commands_sha256": fingerprint(commands),
                     "steps": len(commands),

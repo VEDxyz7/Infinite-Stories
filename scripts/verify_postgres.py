@@ -96,6 +96,7 @@ def main():
             from dataclasses import replace
 
             from backend.tests.test_cultural_production import harness
+            from backend.tests.test_taste_comparison import finish
 
             cultural_config, provider, calls, interest, _ = harness(work / "captured-city", "brand")
             cultural_config = replace(cultural_config, database_url=url)
@@ -108,6 +109,21 @@ def main():
                 if created.status_code != 200 or not created.json()["state"].get("city_generation"):
                     raise RuntimeError("Could not prepare procedural recovery snapshot")
                 cultural_expected = created.json()
+                completed = []
+                for mode in ("cultural", "generic_control"):
+                    creation = client.post(
+                        "/v1/sessions",
+                        headers=headers,
+                        json={"mode": mode, "request_id": str(uuid4()), "interests": [interest]},
+                    )
+                    if creation.status_code != 200:
+                        raise RuntimeError("Could not prepare completed reward snapshot")
+                    terminal, receipt = finish(client, headers, creation.json())
+                    if not terminal["state"].get("taste_card"):
+                        raise RuntimeError("Completed run has no persisted Taste Card")
+                    completed.append((terminal, receipt))
+            # Same saved seed: the production adapter's explicit one-hour cache
+            # serves the second cultural creation; control never calls it.
             if len(calls) != 2:
                 raise RuntimeError("Captured transport operation count differs")
             run("pg_ctl", "-D", data, "-w", "stop")
@@ -131,6 +147,18 @@ def main():
                         or city.json()["revision"] != cultural_expected["revision"]
                     ):
                         raise RuntimeError("Procedural seed/plan/proof snapshot changed on recovery")
+                    for terminal, receipt in completed:
+                        url = "/v1/sessions/" + terminal["session_id"]
+                        reward = client.get(url, headers=headers)
+                        if reward.status_code != 200 or reward.json()["state"] != terminal["state"]:
+                            raise RuntimeError("Completed card or isolated mode changed on recovery")
+                        replay = client.post(url + "/actions", headers=headers, json=receipt.model_dump(mode="json"))
+                        if (
+                            replay.status_code != 200
+                            or not replay.json()["idempotent_replay"]
+                            or replay.json()["state"] != terminal["state"]
+                        ):
+                            raise RuntimeError("Completed mode receipt failed replay after restart/restore")
 
             verify_snapshot(url)
             report["checks"].append("Confirmed snapshot and ownership survived actual PostgreSQL process restart")
@@ -145,6 +173,9 @@ def main():
             )
             report["checks"].append(
                 "Captured-evidence procedural seed, plan, evidence and witness survived actual PostgreSQL restart and dump/restore without provider access"
+            )
+            report["checks"].append(
+                "Completed Qloo and isolated synthetic control Taste Cards, ownership, modes and ending receipts survived actual PostgreSQL restart and dump/restore with providers disabled"
             )
             report["postgres_version"] = run("postgres", "--version")
         finally:

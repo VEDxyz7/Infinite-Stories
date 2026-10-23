@@ -31,6 +31,7 @@ namespace InfiniteStories
             ui.RecordDiscovery=command=>{if(!busy&&!HasPending)StartCoroutine(Act(command));};
             ui.Resume=Resume; ui.Reload=ReloadConfirmed; ui.Retry=Retry;
             ui.StartAuthored=() => NewGame("authored"); ui.StartCultural=() => NewGame("cultural");
+            ui.StartControl=() => NewGame("generic_control"); ui.CompareModes=CompareModes;
             ui.SubmitTurn=() => OnBrowserTurn(ui.ActionText);
             ui.ReturnTitle=() => { if (!busy) StartCoroutine(SaveAndTitle()); };
             ui.ShowTitle(PlayerPrefs.HasKey(SessionKey));
@@ -57,6 +58,7 @@ namespace InfiniteStories
             if (command.StartsWith("confirm:",StringComparison.Ordinal) && !busy) { if (int.TryParse(command.Substring(8),out int candidate)) ui.ConfirmCandidate(candidate); return; }
             if (command=="cultural") { NewGame("cultural"); return; }
             if (command=="authored") { NewGame("authored"); return; }
+            if (command=="generic_control") { NewGame("generic_control"); return; }
             if (command=="resume") { Resume(); return; }
             if (command=="reload") { ReloadConfirmed(); return; }
             if (command=="retry") { Retry(); return; }
@@ -66,7 +68,7 @@ namespace InfiniteStories
             if (command=="sound") { ui.ToggleSound();return; }
             if(command.StartsWith("scan:",StringComparison.Ordinal)){ui.SetScannerTool(command.Substring(5));return;}
             if (command=="story") { ui.ShowStory();return; }
-            if (command=="compare") { ui.ToggleScannerComparison(); return; }
+            if (command=="compare") { if(ui.ActivePanel!="scanner")ui.ShowScanner();ui.ToggleScannerComparison();return; }
             if (command=="scanner") { world.Player.StopInput(); ui.ShowScanner(); return; }
             if (command=="journal") { world.Player.StopInput(); ui.ShowJournal(); return; }
             if (command=="pause") { world.Player.StopInput(); ui.ShowPause(); return; }
@@ -108,7 +110,21 @@ namespace InfiniteStories
             if (mode=="cultural" && ui.SelectedInterests.Length==0) { ui.Status("Add at least one artist, film, brand or game first."); return; }
             ui.Status(mode=="cultural" ? "Finding cultural connections and preparing your city…" : "Preparing the original chapter…");
             var request = new NewGameRequest { request_id=Guid.NewGuid().ToString(), mode=mode, interests=ui.SelectedInterests };
-            StartCoroutine(Write("/v1/sessions",JsonUtility.ToJson(request)));
+            StartCoroutine(CreateRun(request));
+        }
+        IEnumerator CreateRun(NewGameRequest request)
+        {
+            // Pre-comparison clients kept only one save ID. Confirm/bookmark it
+            // before a title-screen creation can replace that sole local pointer.
+            string previous=PlayerPrefs.GetString(SessionKey,"");
+            if(view==null&&!string.IsNullOrEmpty(previous)){
+                busy=true;bool confirmed=false;
+                yield return api.Send("/v1/sessions/"+previous,"GET",null,saved=>{
+                    PlayerPrefs.SetString("is.comparison."+saved.state.mode,saved.session_id);PlayerPrefs.Save();confirmed=true;
+                },(error,_)=>{confirmed=error.code=="SESSION_UNAVAILABLE";if(!confirmed)ui.Status("Your previous save could not be confirmed. Resume it before starting another city.");});
+                busy=false;if(!confirmed)yield break;
+            }
+            yield return Write("/v1/sessions",JsonUtility.ToJson(request));
         }
         void Resume()
         {
@@ -122,6 +138,22 @@ namespace InfiniteStories
             string id=PlayerPrefs.GetString(SessionKey,"");
             if (string.IsNullOrEmpty(id)) { ui.Status("No saved journey is linked to this browser. Start the authored chapter."); return; }
             StartCoroutine(Load(id));
+        }
+        void CompareModes()
+        {
+            if(busy||HasPending||view==null)return;
+            string target=view.state.mode=="generic_control"?"cultural":"generic_control";
+            string id=PlayerPrefs.GetString("is.comparison."+target,"");
+            // A separate owned run, never a mode mutation. Flush confirmed movement
+            // before switching so returning cannot lose the player's last position.
+            StartCoroutine(SwitchComparison(target,id));
+        }
+        IEnumerator SwitchComparison(string target,string id)
+        {
+            if(world.Player!=null&&string.IsNullOrEmpty(view.state.ending))yield return FlushPosition();
+            if(HasPending||busy)yield break;
+            if(!string.IsNullOrEmpty(id))yield return Load(id);
+            else NewGame(target);
         }
         PendingRequest ReadPending()
         {
@@ -173,7 +205,7 @@ namespace InfiniteStories
         {
             if (view != null && incoming.session_id == view.session_id && incoming.revision < view.revision) return;
             if (view!=null && view.session_id!=incoming.session_id) world.Clear();
-            view=incoming; PlayerPrefs.SetString(SessionKey,view.session_id); PlayerPrefs.Save();
+            view=incoming; PlayerPrefs.SetString(SessionKey,view.session_id); PlayerPrefs.SetString("is.comparison."+view.state.mode,view.session_id); PlayerPrefs.Save();
             world.Show(view.location,view.state.x,view.state.y); world.ConfirmStory(view.state); ui.ShowGame(view);
             if (!string.IsNullOrEmpty(view.state.ending)) ui.ShowEnding(view);
         }

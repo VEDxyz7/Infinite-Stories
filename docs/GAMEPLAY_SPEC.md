@@ -76,6 +76,65 @@ Curator proof. Distinguish confirmed discoveries, missing steps and creative set
 Taste Card rewards the actual choices, supporting cultural pair(s), privacy promise
 and ending. Never infer player identity or treat affinity as collaboration evidence.
 
+**Completion reward (`taste-card-v1`):** the engine builds `state.taste_card` exactly
+once on success/keeper/dawn, in the same transaction as the terminal state/receipt.
+It saves canonical resolved favourites; confirmed story discoveries; encountered
+seed entities and selected results earned through trace/memory/proof flags; their
+actual directed saved recommendation provenance; a profile; and at most six try-next
+picks. Catalogue reads alone do not claim a confirmed discovery. No new provider or
+model requests occur. Refresh/restart returns the saved card, not a newly sampled
+reward. Old completed saves lacking the field receive a pure deterministic v1 view;
+their stored state, version, receipt and clock rules are not silently migrated.
+
+Profile is an **application exploration heuristic, not Qloo classification or
+personality**. With a confirmed thread, one source category maps artist→Sound-to-
+screen explorer, movie→Screen-to-sound explorer, brand→Design-to-screen explorer,
+video game→Play-to-screen explorer; mixed directions yield Cross-media explorer.
+Without a confirmed thread the result is First-light explorer and explicitly
+insufficient for a cultural taste classification. Up to three actual encountered
+entity tag labels support the description, ordered by descending number of entities
+carrying each tag ID then ascending ID; each entity counts once per tag. Sparse tags
+remain unavailable: never infer a missing genre. Synthetic control receives the
+authored Lantern storyteller label, explicitly not a cultural taste measurement.
+
+Try-next picks use only saved recommendation membership; exclude every selected
+favourite and confirmed encountered entity, deduplicate by UUID, sort sources/targets
+by UUID and cap at six. Each pick retains its source/target/category and the original
+request provenance. Copy explains aggregate affinity only; no invented rationale,
+reverse edge, personal trait or claim of collaboration. Empty evidence gives a clear
+limited/empty state. Dawn can still suggest saved, undiscovered results; it does not
+retroactively mark them as discovered.
+
+**Playable comparison:** new `generic_control` sessions are separate immutable-mode
+saves, never in-place conversions of a cultural game. The title and Scanner offer
+Qloo off / on; Unity bookmarks each mode and resumes the existing paired save on
+return. Pending operations must be reconciled before switching; position is flushed
+first. Different players use distinct bearer owners/browser profiles; sessions and
+creation/action receipts remain scoped to ownership. A second player should use a separate browser profile, or normal versus private
+profiles, not share the resume token. Two private windows in one private session
+may share storage and should not be treated as separate player identities.
+
+`synthetic-control-v1` has a constant saved seed `last-light-control-v1`. Its invented
+record The Lantern Waltz and invented film Paper Moon Tram share an **authored** motif,
+three amber circles. Route: Mara map → boutique sleeve note → Ivo rhythm → record-bar
+ticket display → Sera promise → Curator motif proof → ending. This differs from the
+saved-Qloo candidate's note/card venues, cultural UUID graph, understanding gates and
+affinity-proof requirements. It intentionally does not personalize culture from the
+selected favourites. The motif answer is an authored option, not a semantic judgement
+of real culture; the engine still requires its clues and twelve-visit economy. It is
+not a Qloo-disabled relabelling of real data, nor a claim that generic clues are live.
+
+Synthetic control has its own strict schema, **no CulturalContext, no CulturalEntity
+UUIDs and no CulturalRequest records**. Synthetic links cannot enter Qloo tools or
+satisfy cultural proof choices. Scanner shows invented props separately; agent
+cultural tools correctly return no provider evidence. Journal/HUD/card explicitly
+identify synthetic content. New control runs pass the same executable solver and
+bind their initial gameplay to the saved activation fingerprint. Legacy authored
+runs retain their old chapter and remain available through the existing API/bridge.
+The control's story motif proof deliberately has no cultural-understanding gate;
+the comparison demonstrates the difference between authored answers and validated
+cultural evidence, not different decorative labels.
+
 **Presentation:** Unity owns the world and interaction. HTML only hosts it and
 provides secondary access controls/diagnostics. Keep the world-first composition;
 make venue floor plans and furnishing footprints distinct for v2, retaining reachable

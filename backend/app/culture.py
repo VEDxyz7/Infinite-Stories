@@ -44,6 +44,10 @@ def select_setting(seed, entities):
 def chapter_for_state(base, state):
     chapter = base.model_copy(deep=True)
     if state.cultural_context is None:
+        if state.generic_control:
+            from .generic_control import decorate as decorate_control
+
+            return decorate_control(dress_chapter(chapter, state), state)
         return dress_chapter(chapter, state)
     chapter.source = "qloo_informed"
     archive = next(loc for loc in chapter.locations if loc.id == "archive")

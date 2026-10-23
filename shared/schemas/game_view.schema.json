@@ -588,7 +588,8 @@
           "default": "authored",
           "enum": [
             "authored",
-            "cultural"
+            "cultural",
+            "generic_control"
           ],
           "title": "Mode",
           "type": "string"
@@ -711,9 +712,74 @@
             }
           ],
           "default": null
+        },
+        "generic_control": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GenericControl"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "taste_card": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TasteCard"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "title": "GameState",
+      "type": "object"
+    },
+    "GenericControl": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": "synthetic-control-v1",
+          "default": "synthetic-control-v1",
+          "title": "Version",
+          "type": "string"
+        },
+        "seed": {
+          "const": "last-light-control-v1",
+          "default": "last-light-control-v1",
+          "title": "Seed",
+          "type": "string"
+        },
+        "source": {
+          "const": "invented_demo",
+          "default": "invented_demo",
+          "title": "Source",
+          "type": "string"
+        },
+        "record": {
+          "const": "The Lantern Waltz",
+          "default": "The Lantern Waltz",
+          "title": "Record",
+          "type": "string"
+        },
+        "film": {
+          "const": "Paper Moon Tram",
+          "default": "Paper Moon Tram",
+          "title": "Film",
+          "type": "string"
+        },
+        "motif": {
+          "const": "three amber circles",
+          "default": "three amber circles",
+          "title": "Motif",
+          "type": "string"
+        }
+      },
+      "title": "GenericControl",
       "type": "object"
     },
     "Location": {
@@ -833,6 +899,134 @@
         "category"
       ],
       "title": "SavedInterest",
+      "type": "object"
+    },
+    "TasteCard": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": "taste-card-v1",
+          "default": "taste-card-v1",
+          "title": "Version",
+          "type": "string"
+        },
+        "domain": {
+          "enum": [
+            "qloo",
+            "authored",
+            "invented_demo"
+          ],
+          "title": "Domain",
+          "type": "string"
+        },
+        "ending": {
+          "enum": [
+            "together",
+            "keeper",
+            "dawn"
+          ],
+          "title": "Ending",
+          "type": "string"
+        },
+        "favourites": {
+          "items": {
+            "$ref": "#/$defs/SavedInterest"
+          },
+          "title": "Favourites",
+          "type": "array"
+        },
+        "discoveries": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Discoveries",
+          "type": "array"
+        },
+        "encountered": {
+          "items": {
+            "$ref": "#/$defs/CulturalEntity"
+          },
+          "title": "Encountered",
+          "type": "array"
+        },
+        "relationships": {
+          "items": {
+            "$ref": "#/$defs/TasteRelationship"
+          },
+          "title": "Relationships",
+          "type": "array"
+        },
+        "profile": {
+          "title": "Profile",
+          "type": "string"
+        },
+        "profile_basis": {
+          "title": "Profile Basis",
+          "type": "string"
+        },
+        "metadata_labels": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Metadata Labels",
+          "type": "array"
+        },
+        "try_next": {
+          "items": {
+            "$ref": "#/$defs/TasteRelationship"
+          },
+          "title": "Try Next",
+          "type": "array"
+        },
+        "recommendations_note": {
+          "title": "Recommendations Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "ending",
+        "favourites",
+        "discoveries",
+        "encountered",
+        "relationships",
+        "profile",
+        "profile_basis",
+        "metadata_labels",
+        "try_next",
+        "recommendations_note"
+      ],
+      "title": "TasteCard",
+      "type": "object"
+    },
+    "TasteRelationship": {
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/CulturalEntity"
+        },
+        "target": {
+          "$ref": "#/$defs/CulturalEntity"
+        },
+        "provenance": {
+          "items": {
+            "$ref": "#/$defs/CulturalRequest"
+          },
+          "title": "Provenance",
+          "type": "array"
+        },
+        "explanation": {
+          "title": "Explanation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "provenance",
+        "explanation"
+      ],
+      "title": "TasteRelationship",
       "type": "object"
     },
     "ToolObservation": {

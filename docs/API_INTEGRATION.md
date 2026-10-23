@@ -266,3 +266,35 @@ clients should use actual destination/object coordinates, not fixed venue guesse
 New procedural plans cannot select any favourite seed ID as a central entity.
 Novelty-sparse catalogues exhaust the same bounded candidate policy and return
 `CITY_UNSOLVABLE` without publishing a run; no extra provider fetch is attempted.
+
+## Completion reward and isolated comparison modes
+
+`POST /v1/sessions` accepts `mode: "generic_control"` in addition to existing
+`authored` and `cultural`. This is a new owned run, never a mode-change endpoint.
+Creation fingerprints bind mode; reusing a request ID with different mode/content
+returns IDEMPOTENCY_CONFLICT. Actions/turns cannot supply mode, evidence or cards.
+Existing ownership, revisions, reservations, receipts and provider-free recovery
+remain authoritative. The new capabilities field `generic_control: true` advertises
+the control scenario; it does not mean Qloo is live or available.
+
+Additive optional GameState fields preserve old /v1 callers:
+
+- `generic_control`: strict synthetic-control-v1 scenario, only in generic_control
+  mode. Source invented_demo; constant saved seed; invented prop titles and motif.
+  No provider IDs/provenance or CulturalContext may be attached.
+- `taste_card`: taste-card-v1 completed-run reward, null before an ending. Domain
+  qloo/authored/invented_demo; ending; canonical favourites; confirmed discoveries;
+  encountered CulturalEntity records; directed relationships and try_next records
+  with source/target entities and actual CulturalRequest provenance; profile,
+  profile_basis, metadata_labels and recommendations_note. Persisted atomically
+  with ending. Old terminal saves receive a deterministic derived view without
+  modifying their stored state.
+
+The versioned deterministic calculation and conservative encountered/try-next
+rules are specified in GAMEPLAY_SPEC.md. These fields grant no client authority.
+Do not display UUIDs, request params or hashes on the normal reward screen; retain
+them in structured evidence for validation/diagnostics. Qloo denotes saved provider
+evidence, not a new live request: captured verification still requires explicit
+verification_mode/replay labelling. Generic control never substitutes for a failed
+Qloo generation. Resume the corresponding session by its own ID; never toggle a
+local flag over a cultural snapshot.

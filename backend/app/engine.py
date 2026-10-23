@@ -4,6 +4,7 @@ from .content import current_location, walkable
 from .culture import chapter_for_state
 from .investigation import enabled
 from .models import Chapter, Command, DomainError, GameState, GameView
+from .taste_card import complete
 
 
 def dawn(state):
@@ -48,7 +49,7 @@ def apply_command(
                 if state.visits == 12:
                     message = dawn(state)
                     state.history = (state.history + [message])[-50:]
-                    return state, message
+                    return complete(state), message
         return state, "Position saved."
     obj = next((obj for obj in loc.objects if obj.id == command.target), None)
     if obj is None:
@@ -99,7 +100,7 @@ def apply_command(
             if expired:
                 state.understanding_records = list(original.understanding_records)
                 state.history = (state.history + [expired])[-50:]
-                return state, expired
+                return complete(state), expired
         state.flags = sorted(set(state.flags) | set(choice.grants))
         state.choices.append(choice.id)
         state.ending = choice.ending
@@ -111,10 +112,12 @@ def apply_command(
     else:
         raise DomainError("ACTION_UNSUPPORTED", "That action cannot be applied.")
     state.history = (state.history + [narrative])[-50:]
-    return state, narrative
+    return complete(state), narrative
 
 
 def game_view(chapter: Chapter, state: GameState, session_id: str, revision: int, narrative: str = ""):
+    # Legacy completed saves get a pure versioned view, never an implicit save migration.
+    state = complete(state.model_copy(deep=True))
     chapter = chapter_for_state(chapter, state)
     loc = current_location(chapter, state)
     nearby = []
@@ -141,6 +144,15 @@ def game_view(chapter: Chapter, state: GameState, session_id: str, revision: int
         if state.cultural_context
         else []
     )
+    if state.generic_control:
+        cultural_objectives = [
+            {"id": flag, "label": label, "completed": flag in state.flags}
+            for flag, label in (
+                ("control_trace", "Record the invented sleeve motif in the boutique"),
+                ("control_memory", "Match the invented film ticket at the record bar"),
+                ("control_proof", "Present the authored motif solution, not a Qloo claim"),
+            )
+        ]
     if enabled(state):
         cultural_objectives += [
             {
@@ -180,6 +192,8 @@ def game_view(chapter: Chapter, state: GameState, session_id: str, revision: int
                 "Qloo recommendations shaped the required cultural quests. Story settings are original interpretations, not facts about you."
             ]
             if state.mode == "cultural"
+            else ["SYNTHETIC CONTROL · invented entities and story connections; no Qloo evidence."]
+            if state.generic_control
             else ["Original authored chapter. This journey uses no cultural-service data."]
         ),
     }

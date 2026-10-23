@@ -17,7 +17,7 @@ namespace InfiniteStories.Tests
         {
             if (Environment.GetEnvironmentVariable("IS_UNITY_HTTP_TESTS") != "1")
                 Assert.Ignore("Requires the real local service on 127.0.0.1:8042 and explicit opt-in.");
-            string[] keys = { "is.resumeToken", "is.sessionId", "is.pendingRequest" };
+            string[] keys = { "is.resumeToken", "is.sessionId", "is.pendingRequest", "is.comparison.authored", "is.comparison.cultural", "is.comparison.generic_control" };
             string[] previous = Array.ConvertAll(keys, key => PlayerPrefs.GetString(key, ""));
             foreach (string key in keys) PlayerPrefs.DeleteKey(key);
             var settings = ScriptableObject.CreateInstance<ClientSettings>();

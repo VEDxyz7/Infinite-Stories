@@ -1079,7 +1079,8 @@
             "type": "string",
             "enum": [
               "authored",
-              "cultural"
+              "cultural",
+              "generic_control"
             ],
             "title": "Mode",
             "default": "authored"
@@ -1194,6 +1195,26 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/CulturalContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generic_control": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenericControl"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "taste_card": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TasteCard"
               },
               {
                 "type": "null"
@@ -1321,6 +1342,49 @@
         ],
         "title": "GenerationRecovery"
       },
+      "GenericControl": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "const": "synthetic-control-v1",
+            "title": "Version",
+            "default": "synthetic-control-v1"
+          },
+          "seed": {
+            "type": "string",
+            "const": "last-light-control-v1",
+            "title": "Seed",
+            "default": "last-light-control-v1"
+          },
+          "source": {
+            "type": "string",
+            "const": "invented_demo",
+            "title": "Source",
+            "default": "invented_demo"
+          },
+          "record": {
+            "type": "string",
+            "const": "The Lantern Waltz",
+            "title": "Record",
+            "default": "The Lantern Waltz"
+          },
+          "film": {
+            "type": "string",
+            "const": "Paper Moon Tram",
+            "title": "Film",
+            "default": "Paper Moon Tram"
+          },
+          "motif": {
+            "type": "string",
+            "const": "three amber circles",
+            "title": "Motif",
+            "default": "three amber circles"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "GenericControl"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1438,7 +1502,8 @@
             "type": "string",
             "enum": [
               "authored",
-              "cultural"
+              "cultural",
+              "generic_control"
             ],
             "title": "Mode",
             "default": "cultural"
@@ -1522,6 +1587,134 @@
           "category"
         ],
         "title": "SavedInterest"
+      },
+      "TasteCard": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "const": "taste-card-v1",
+            "title": "Version",
+            "default": "taste-card-v1"
+          },
+          "domain": {
+            "type": "string",
+            "enum": [
+              "qloo",
+              "authored",
+              "invented_demo"
+            ],
+            "title": "Domain"
+          },
+          "ending": {
+            "type": "string",
+            "enum": [
+              "together",
+              "keeper",
+              "dawn"
+            ],
+            "title": "Ending"
+          },
+          "favourites": {
+            "items": {
+              "$ref": "#/components/schemas/SavedInterest"
+            },
+            "type": "array",
+            "title": "Favourites"
+          },
+          "discoveries": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Discoveries"
+          },
+          "encountered": {
+            "items": {
+              "$ref": "#/components/schemas/CulturalEntity"
+            },
+            "type": "array",
+            "title": "Encountered"
+          },
+          "relationships": {
+            "items": {
+              "$ref": "#/components/schemas/TasteRelationship"
+            },
+            "type": "array",
+            "title": "Relationships"
+          },
+          "profile": {
+            "type": "string",
+            "title": "Profile"
+          },
+          "profile_basis": {
+            "type": "string",
+            "title": "Profile Basis"
+          },
+          "metadata_labels": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Metadata Labels"
+          },
+          "try_next": {
+            "items": {
+              "$ref": "#/components/schemas/TasteRelationship"
+            },
+            "type": "array",
+            "title": "Try Next"
+          },
+          "recommendations_note": {
+            "type": "string",
+            "title": "Recommendations Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "domain",
+          "ending",
+          "favourites",
+          "discoveries",
+          "encountered",
+          "relationships",
+          "profile",
+          "profile_basis",
+          "metadata_labels",
+          "try_next",
+          "recommendations_note"
+        ],
+        "title": "TasteCard"
+      },
+      "TasteRelationship": {
+        "properties": {
+          "source": {
+            "$ref": "#/components/schemas/CulturalEntity"
+          },
+          "target": {
+            "$ref": "#/components/schemas/CulturalEntity"
+          },
+          "provenance": {
+            "items": {
+              "$ref": "#/components/schemas/CulturalRequest"
+            },
+            "type": "array",
+            "title": "Provenance"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "target",
+          "provenance",
+          "explanation"
+        ],
+        "title": "TasteRelationship"
       },
       "ToolObservation": {
         "properties": {

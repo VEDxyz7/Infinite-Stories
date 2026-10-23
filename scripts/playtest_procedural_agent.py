@@ -18,6 +18,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from backend.app.config import Settings
 from backend.app.culture import chapter_for_state
 from backend.app.local_game_master import OllamaGameMaster
 from backend.app.main import create_app
@@ -295,15 +296,123 @@ def campaign(category, output, model):
     return report
 
 
+def control_campaign(output, model):
+    """Actual model over authored synthetic objects; never supplies model replies."""
+    output.mkdir(parents=True)
+    report = {
+        "kind": "actual_local_model_synthetic_control",
+        "turns": [],
+        "pass": False,
+        "live_Qloo_requests": 0,
+        "hosted_model_requests": 0,
+    }
+    with tempfile.TemporaryDirectory(prefix="is-control-agent-") as folder:
+        settings = Settings(
+            database_url="sqlite:///" + str(Path(folder) / "control.sqlite3"),
+            environment="test",
+            requests_per_minute=1000,
+            llm_provider="ollama",
+            llm_model=model,
+            llm_calls_allowed=True,
+        )
+        gm = OllamaGameMaster(settings)
+        headers = {"Authorization": "Bearer " + secrets.token_urlsafe(32)}
+        try:
+            with TestClient(create_app(settings, game_master=gm)) as client:
+                body = {"request_id": str(uuid4()), "mode": "generic_control", "interests": []}
+                response = client.post("/v1/sessions", headers=headers, json=body)
+                assert response.status_code == 200, response.text
+                view = response.json()
+                report["initial"] = view
+                route = [
+                    ("mara", "I accept your route. Please entrust me with the map.", "map"),
+                    (
+                        "control_note",
+                        "I choose to record this invented screening note's sleeve motif.",
+                        "control_trace",
+                    ),
+                    ("ivo", "I have recorded the invented sleeve motif. Please teach me the rhythm.", "rhythm"),
+                    (
+                        "control_card",
+                        "Please record the matching invented film ticket motif on this display.",
+                        "control_memory",
+                    ),
+                    (
+                        "sera",
+                        "I choose to guard the private letters. Please entrust me with the chronicle.",
+                        "chronicle",
+                    ),
+                    (
+                        "beacon",
+                        "I present the matching three amber circles on The Lantern Waltz and Paper Moon Tram as my authored motif proof, not as Qloo evidence. Please accept the motif solution.",
+                        "control_proof",
+                    ),
+                    ("beacon", "Light the beacon so we can leave together.", "beacon"),
+                ]
+                for target, text, flag in route:
+                    view = goto_object(client, headers, view, target)
+                    if target in ("mara", "ivo", "sera", "beacon"):
+                        response = action(client, headers, view, {"kind": "interact", "target": target})
+                        assert response.status_code == 200, response.text
+                        view = response.json()
+                    request = {"request_id": str(uuid4()), "expected_revision": view["revision"], "text": text}
+                    before = time.perf_counter()
+                    url = "/v1/sessions/" + view["session_id"]
+                    response = client.post(url + "/turns", headers=headers, json=request)
+                    row = {
+                        "input": text,
+                        "target": target,
+                        "http_status": response.status_code,
+                        "wall_ms": round((time.perf_counter() - before) * 1000),
+                        "metrics": copy.deepcopy(gm.metrics),
+                        "response": response.json(),
+                    }
+                    report["turns"].append(row)
+                    (output / "report.json").write_text(json.dumps(report, indent=2))
+                    assert response.status_code == 200, response.text
+                    view = response.json()
+                    assert flag in view["state"]["flags"], "Missing authoritative progress: " + flag
+                    replay = client.post(url + "/turns", headers=headers, json=request)
+                    assert replay.status_code == 200 and replay.json()["idempotent_replay"]
+                    assert replay.json()["state"] == view["state"]
+                    assert view["state"]["cultural_context"] is None
+                assert view["state"]["ending"] == "together" and view["state"]["visits"] == 4
+                assert view["state"]["taste_card"]["domain"] == "invented_demo"
+                assert not view["state"]["taste_card"]["try_next"]
+                assert client.get(url, headers=headers).json()["state"] == view["state"]
+                report["ending"] = view
+            with TestClient(create_app(replace(settings, llm_calls_allowed=False))) as restarted:
+                assert restarted.get(url, headers=headers).json()["state"] == view["state"]
+            report["pass"] = True
+        except Exception as error:
+            report["error"] = str(error)[:300]
+        finally:
+            elapsed = [r["wall_ms"] for r in report["turns"]]
+            report.update(
+                local_inference_responses=sum(len(r["metrics"].get("steps", [])) for r in report["turns"]),
+                median_ms=statistics.median(elapsed) if elapsed else None,
+                max_ms=max(elapsed) if elapsed else None,
+            )
+            (output / "report.json").write_text(json.dumps(report, indent=2))
+    return report
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--model", default="qwen3.5:4b")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--control-only", action="store_true", help="One bounded actual-local-model synthetic control campaign"
+    )
     args = parser.parse_args()
     if not args.execute:
         raise SystemExit("Requires --execute; actual local inference only")
     args.output.mkdir(exist_ok=False, parents=True)
+    if args.control_only:
+        report = control_campaign(args.output / "control", args.model)
+        print("synthetic control", "PASS" if report["pass"] else "FAIL", report.get("error", ""))
+        raise SystemExit(0 if report["pass"] else 1)
     reports = []
     for category in ("artist", "movie"):
         report = campaign(category, args.output / category, args.model)

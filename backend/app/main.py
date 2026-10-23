@@ -187,6 +187,7 @@ def create_app(settings=None, game_master=None, cultural_provider=None):
         return {
             "schema_version": 1,
             "authored_chapter": True,
+            "generic_control": True,
             "cultural_generation": app.state.cultural_provider.available,
             "cultural_categories": ["artist", "movie", "brand", "videogame"],
             "qloo_adapter_live_verified": False,

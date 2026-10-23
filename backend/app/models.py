@@ -103,7 +103,7 @@ class CulturalContext(StrictModel):
 
 class NewGame(StrictModel):
     request_id: UUID
-    mode: Literal["authored", "cultural"] = "cultural"
+    mode: Literal["authored", "cultural", "generic_control"] = "cultural"
     interests: list[Interest] = Field(default_factory=list, max_length=5)
 
 
@@ -265,11 +265,43 @@ class ActivationValidation(StrictModel):
     ending: Literal["together", "keeper"]
 
 
+class GenericControl(StrictModel):
+    version: Literal["synthetic-control-v1"] = "synthetic-control-v1"
+    seed: Literal["last-light-control-v1"] = "last-light-control-v1"
+    source: Literal["invented_demo"] = "invented_demo"
+    # Not CulturalEntity: no fabricated Qloo UUID, request provenance or affinity.
+    record: Literal["The Lantern Waltz"] = "The Lantern Waltz"
+    film: Literal["Paper Moon Tram"] = "Paper Moon Tram"
+    motif: Literal["three amber circles"] = "three amber circles"
+
+
+class TasteRelationship(StrictModel):
+    source: CulturalEntity
+    target: CulturalEntity
+    provenance: list[CulturalRequest]
+    explanation: str
+
+
+class TasteCard(StrictModel):
+    version: Literal["taste-card-v1"] = "taste-card-v1"
+    domain: Literal["qloo", "authored", "invented_demo"]
+    ending: Literal["together", "keeper", "dawn"]
+    favourites: list[SavedInterest]
+    discoveries: list[str]
+    encountered: list[CulturalEntity]
+    relationships: list[TasteRelationship]
+    profile: str
+    profile_basis: str
+    metadata_labels: list[str]
+    try_next: list[TasteRelationship]
+    recommendations_note: str
+
+
 class GameState(StrictModel):
     schema_version: Literal[1] = 1
     chapter_id: Literal["last_light"] = "last_light"
     chapter_version: Literal[1] = 1
-    mode: Literal["authored", "cultural"] = "authored"
+    mode: Literal["authored", "cultural", "generic_control"] = "authored"
     location_id: str = "quay"
     x: float = 4
     y: float = 5
@@ -289,9 +321,17 @@ class GameState(StrictModel):
     )
     cultural_source: Literal["none", "qloo"] = "none"
     cultural_context: CulturalContext | None = None
+    generic_control: GenericControl | None = None
+    taste_card: TasteCard | None = None
 
     @model_validator(mode="after")
     def consistent_source(self):
+        if (self.mode == "generic_control") != (self.generic_control is not None):
+            raise ValueError("Synthetic control requires its isolated versioned scenario")
+        if self.taste_card is not None:
+            domain = "qloo" if self.mode == "cultural" else "invented_demo" if self.generic_control else "authored"
+            if self.taste_card.ending != self.ending or self.taste_card.domain != domain:
+                raise ValueError("Taste Card must match a completed run and evidence domain")
         if self.visit_rules == "travel-v1" and self.visits < 1:
             raise ValueError("Legacy travel saves start at visit one")
         if (self.mode == "cultural") != (self.cultural_context is not None) or (self.cultural_source == "qloo") != (

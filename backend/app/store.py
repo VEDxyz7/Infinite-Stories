@@ -156,7 +156,11 @@ class Store:
                 or validation.evidence_sha256 != fingerprint(evidence)
                 or validation.chapter_sha256 != fingerprint(self.chapter.model_dump(mode="json"))
                 or validation.generated_chapter_sha256
-                != (initial_chapter_fingerprint(self.chapter, state) if state.city_generation else None)
+                != (
+                    initial_chapter_fingerprint(self.chapter, state)
+                    if state.city_generation or state.generic_control
+                    else None
+                )
                 or validation.generation_sha256
                 != (fingerprint(state.city_generation.model_dump(mode="json")) if state.city_generation else None)
             ):
@@ -283,8 +287,17 @@ class Store:
                     )
                 raise safe from None
         else:
+            from .models import GenericControl
+
             state = activate_candidate(
-                self.chapter, GameState(interests=request.interests, visit_rules="conversation-v1", visits=0)
+                self.chapter,
+                GameState(
+                    mode=request.mode,
+                    interests=request.interests,
+                    visit_rules="conversation-v1",
+                    visits=0,
+                    generic_control=GenericControl() if request.mode == "generic_control" else None,
+                ),
             )
         data = state.model_dump(mode="json")
         gid = str(uuid4())

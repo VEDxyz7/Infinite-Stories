@@ -7,6 +7,33 @@ namespace InfiniteStories.Tests
 {
     public sealed class PresentationTests
     {
+        [UnityTest] public IEnumerator Phase5CardsAndBothModesRenderAuthoritativeSnapshots()
+        {
+            string directory=System.Environment.GetEnvironmentVariable("IS_PHASE5_EVIDENCE_DIRECTORY");
+            if(string.IsNullOrEmpty(directory))Assert.Ignore("Opt-in: captured-only Phase5 backend campaign snapshots required.");
+            var runtime=new System.Collections.Generic.List<string>();
+            foreach(string name in new[]{"artist-on","artist-off","movie-on","movie-off","artist-on-dawn","artist-off-dawn"}){
+                var view=JsonUtility.FromJson<GameView>(System.IO.File.ReadAllText(System.IO.Path.Combine(directory,name+"-ending.json")));
+                Assert.IsNotNull(view.state.taste_card);Assert.AreEqual(name.EndsWith("dawn")?"dawn":"together",view.state.ending);
+                string before=JsonUtility.ToJson(view.state);
+                var root=new GameObject("Phase5 reward "+name);var ui=root.AddComponent<GameUI>();ui.ReplayVerification=true;ui.Initialize();
+                ui.ShowGame(view);ui.ShowEnding(view);yield return null;
+                string visible="";foreach(var label in root.GetComponentsInChildren<UnityEngine.UI.Text>(true))visible+="\n"+label.text;
+                Assert.That(visible,Does.Contain("TASTE CARD"));Assert.That(visible,Does.Contain("TRY NEXT"));
+                Assert.That(visible,Does.Contain(view.state.taste_card.profile.ToUpperInvariant()));
+                foreach(var item in view.state.taste_card.try_next){Assert.That(visible,Does.Contain(item.target.name));Assert.That(visible,Does.Not.Contain(item.target.entity_id));}
+                if(view.state.mode=="generic_control"){
+                    Assert.That(visible,Does.Contain("SYNTHETIC CONTROL"));Assert.AreEqual("none",view.state.cultural_source);Assert.IsTrue(view.state.cultural_context?.links==null||view.state.cultural_context.links.Length==0);
+                    ui.ShowScanner();Assert.That(ui.ActivePanelText,Does.Contain("The Lantern Waltz"));Assert.That(ui.ActivePanelText,Does.Contain("No measured affinity"));
+                    ui.ShowJournal();Assert.That(ui.ActivePanelText,Does.Contain("SYNTHETIC CONTROL"));
+                }else{Assert.That(visible,Does.Contain("Application heuristic"));if(!name.EndsWith("dawn"))Assert.That(visible,Does.Contain("aggregate affinity"));}
+                if(name.EndsWith("dawn")){Assert.That(visible,Does.Contain("THE CITY WILL WAIT"));Assert.That(visible,Does.Contain("12 / 12 visits"));}
+                int switches=0;ui.CompareModes=()=>switches++;ui.ShowScanner();ui.ToggleScannerComparison();
+                Assert.AreEqual(1,switches);Assert.AreEqual(before,JsonUtility.ToJson(view.state),"Comparison requests cannot mutate the current mode or progress locally.");
+                runtime.Add(name+"\n"+visible);Object.Destroy(root);yield return null;
+            }
+            System.IO.File.WriteAllText(System.IO.Path.Combine(directory,"unity-rendered-card-text.txt"),string.Join("\n\n",runtime));
+        }
         [UnityTest] public IEnumerator ActualProceduralCampaignTasteCardsUseConfirmedSnapshots()
         {
             string directory=System.Environment.GetEnvironmentVariable("IS_PROCEDURAL_AGENT_PLAYTEST_DIRECTORY");

@@ -20,7 +20,7 @@ namespace InfiniteStories.Tests
         {
             if(Environment.GetEnvironmentVariable("IS_UNITY_HTTP_TESTS")!="1"||Environment.GetEnvironmentVariable("IS_UNITY_CULTURAL_TESTS")!="1")
                 Assert.Ignore("Requires explicitly captured-only local HTTP verification server.");
-            string[] keys={"is.resumeToken","is.sessionId","is.pendingRequest"};
+            string[] keys={"is.resumeToken","is.sessionId","is.pendingRequest","is.comparison.authored","is.comparison.cultural","is.comparison.generic_control"};
             string[] prior=Array.ConvertAll(keys,k=>PlayerPrefs.GetString(k,""));
             foreach(string key in keys)PlayerPrefs.DeleteKey(key);
             var settings=ScriptableObject.CreateInstance<ClientSettings>();settings.apiOrigin=Environment.GetEnvironmentVariable("IS_UNITY_TEST_API_URL");
